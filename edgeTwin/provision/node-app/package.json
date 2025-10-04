@@ -8,5 +8,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "asn1js": "^3.0.6",
+    "pkijs": "^3.2.5"
   }
 }

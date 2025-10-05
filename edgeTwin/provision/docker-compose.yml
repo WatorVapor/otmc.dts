@@ -20,6 +20,7 @@ services:
     working_dir: /app
     volumes:
       - /opt/secure/dts/provision/factory:/secure/factory
+      - /opt/secure/dts/provision/cluster:/secure/cluster
       - /opt/secure/dts/provision/cloud:/secure/cloud
       - /opt/secure/dts/provision/enduser:/secure/enduser
       - ./node-app:/app

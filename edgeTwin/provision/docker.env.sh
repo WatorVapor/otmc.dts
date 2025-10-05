@@ -15,7 +15,8 @@ read -d ''  DOCKER_NODE << EOF
 docker run -it
   -v /etc/group:/etc/group:ro 
   -v /etc/passwd:/etc/passwd:ro 
-  -v /dev/shm/:/dev/shm/ 
+  -v /dev/shm/:/dev/shm/
+  -v /var/run/:/var/run/
   -v /opt/otmc/:/opt/otmc/
   -v ${GPARENT_DIR}:${GPARENT_DIR} 
   -v ${HOME}:${HOME} 
@@ -35,6 +36,7 @@ docker run -d
   -v /etc/group:/etc/group:ro 
   -v /etc/passwd:/etc/passwd:ro 
   -v /dev/shm/:/dev/shm/ 
+  -v /var/run/:/var/run/
   -v /opt/otmc/:/opt/otmc/
   -v ${GPARENT_DIR}:${GPARENT_DIR} 
   -v ${HOME}:${HOME} 

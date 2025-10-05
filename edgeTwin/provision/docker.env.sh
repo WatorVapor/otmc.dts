@@ -17,7 +17,9 @@ docker run -it
   -v /etc/passwd:/etc/passwd:ro 
   -v /dev/shm/:/dev/shm/
   -v /var/run/:/var/run/
-  -v /opt/otmc/:/opt/otmc/
+  -v /opt/secure/dts/provision/factory:/secure/factory
+  -v /opt/secure/dts/provision/cloud:/secure/cloud
+  -v /opt/secure/dts/provision/enduser:/secure/enduser
   -v ${GPARENT_DIR}:${GPARENT_DIR} 
   -v ${HOME}:${HOME} 
   -u $(id -u $USER):$(id -g $USER) 
@@ -37,7 +39,9 @@ docker run -d
   -v /etc/passwd:/etc/passwd:ro 
   -v /dev/shm/:/dev/shm/ 
   -v /var/run/:/var/run/
-  -v /opt/otmc/:/opt/otmc/
+  -v /opt/secure/dts/provision/factory:/secure/factory
+  -v /opt/secure/dts/provision/cloud:/secure/cloud
+  -v /opt/secure/dts/provision/enduser:/secure/enduser
   -v ${GPARENT_DIR}:${GPARENT_DIR} 
   -v ${HOME}:${HOME} 
   -u $(id -u $USER):$(id -g $USER) 

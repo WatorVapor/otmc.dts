@@ -21,6 +21,7 @@ services:
     volumes:
       - /opt/secure/dts/provision/factory:/secure/factory
       - /opt/secure/dts/provision/cloud:/secure/cloud
+      - /opt/secure/dts/provision/enduser:/secure/enduser
       - ./node-app:/app
     command: sh -c "npm install && npm start"
     environment:

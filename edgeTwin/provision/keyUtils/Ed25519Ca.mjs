@@ -20,7 +20,13 @@ class Ed25519CertificateGenerator {
       encipherOnly: 0x01,     // 位7
       decipherOnly: 0x80      // 位7 (与encipherOnly相同位，但用于keyAgreement)
     };
-  }
+    this.keyPair = null;
+    this.privateKey = null;
+    this.publicKey = null;
+    this.privateKeyPEM = null;
+    this.publicKeyPEM = null;
+
+}
 
   /**
    * 生成随机的序列号
@@ -66,6 +72,9 @@ class Ed25519CertificateGenerator {
         true,
         ['sign', 'verify']
       );
+      this.keyPair = keyPair;
+      this.privateKey = keyPair.privateKey;
+      this.publicKey = keyPair.publicKey;
       return keyPair;
     } catch (error) {
       throw new Error(`生成密钥对时出错: ${error.message}`);
@@ -93,7 +102,12 @@ class Ed25519CertificateGenerator {
         true,
         ['sign']
       );
-      
+      this.privateKey = privateKey;
+      this.privateKeyPEM = pem;
+      if(!this.keyPair) {
+        this.keyPair = {};
+      }
+      this.keyPair.privateKey = privateKey;
       return privateKey;
     } catch (error) {
       throw new Error(`导入私钥时出错: ${error.message}`);
@@ -121,7 +135,12 @@ class Ed25519CertificateGenerator {
         true,
         ['verify']
       );
-      
+      this.publicKey = publicKey;
+      this.publicKeyPEM = pem;
+      if(!this.keyPair) {
+        this.keyPair = {};
+      }
+      this.keyPair.publicKey = publicKey;
       return publicKey;
     } catch (error) {
       throw new Error(`导入公钥时出错: ${error.message}`);
@@ -136,12 +155,12 @@ class Ed25519CertificateGenerator {
       const rawPrivateKey = await subtle.exportKey('pkcs8', privateKey);
       const derBase64 = Buffer.from(rawPrivateKey).toString('base64');
       const pem = `-----BEGIN PRIVATE KEY-----\n${derBase64.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----\n`;
+      this.privateKeyPEM = pem;
       return pem;
     } catch (error) {
       throw new Error(`导出私钥时出错: ${error.message}`);
     }
   }
-
   /**
    * 导出公钥为 PEM 格式
    */
@@ -150,10 +169,17 @@ class Ed25519CertificateGenerator {
       const rawPublicKey = await subtle.exportKey('spki', publicKey);
       const derBase64 = Buffer.from(rawPublicKey).toString('base64');
       const pem = `-----BEGIN PUBLIC KEY-----\n${derBase64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----\n`;
+      this.publicKeyPEM = pem;
       return pem;
     } catch (error) {
       throw new Error(`导出公钥时出错: ${error.message}`);
     }
+  }
+
+  /**
+   * 从私钥创建公钥
+   */
+  async createPublicKeyFromPrivateKey() {
   }
 
   /**
@@ -328,7 +354,7 @@ class Ed25519CertificateGenerator {
         validityDays = 365,
         extensions = {}
       } = params;
-
+      
       const notBefore = new Date();
       const notAfter = new Date();
       notAfter.setDate(notAfter.getDate() + validityDays);
@@ -437,13 +463,11 @@ class Ed25519CertificateGenerator {
    */
   async generateRootCA(subject, validityYears = 10) {
     try {
-      console.log('正在生成根 CA 密钥对...');
-      const keyPair = await this.generateKeyPair();
       
       console.log('正在生成根 CA 证书...');
       const certificate = await this.generateCertificate({
-        subjectKeyPair: keyPair,
-        issuerKeyPair: keyPair, // 自签名
+        subjectKeyPair: this.keyPair,
+        issuerKeyPair: this.keyPair, // 自签名
         subject: subject,
         issuer: subject,
         validityDays: validityYears * 365,
@@ -462,10 +486,10 @@ class Ed25519CertificateGenerator {
 
       console.log('✓ 根 CA 生成成功');
       return {
-        keyPair,
+        keyPair: this.keyPair,
         certificate,
-        privateKeyPEM: await this.exportPrivateKeyToPEM(keyPair.privateKey),
-        publicKeyPEM: await this.exportPublicKeyToPEM(keyPair.publicKey)
+        privateKeyPEM: await this.exportPrivateKeyToPEM(this.keyPair.privateKey),
+        publicKeyPEM: await this.exportPublicKeyToPEM(this.keyPair.publicKey)
       };
 
     } catch (error) {
@@ -597,7 +621,7 @@ class Ed25519CertificateGenerator {
 }
 
 // 导出类
-export default Ed25519CertificateGenerator;
+export { Ed25519CertificateGenerator };
 
 /**
  * 使用示例

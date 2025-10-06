@@ -1,6 +1,9 @@
 import { webcrypto } from 'crypto';
 import { writeFile, readFile } from 'fs/promises';
 import asn1 from 'asn1js';
+import { Certificate  } from 'pkijs';
+
+
 
 const { subtle } = webcrypto;
 
@@ -461,13 +464,13 @@ class Ed25519CertificateGenerator {
   /**
    * 生成根 CA 证书
    */
-  async generateRootCA(subject, validityYears = 10) {
+  async generateRootCA(subject, validityYears = 10, keyPair = this.keyPair) {
     try {
       
       console.log('正在生成根 CA 证书...');
       const certificate = await this.generateCertificate({
-        subjectKeyPair: this.keyPair,
-        issuerKeyPair: this.keyPair, // 自签名
+        subjectKeyPair: keyPair,
+        issuerKeyPair: keyPair, // 自签名
         subject: subject,
         issuer: subject,
         validityDays: validityYears * 365,
@@ -486,10 +489,10 @@ class Ed25519CertificateGenerator {
 
       console.log('✓ 根 CA 生成成功');
       return {
-        keyPair: this.keyPair,
+        keyPair: keyPair,
         certificate,
-        privateKeyPEM: await this.exportPrivateKeyToPEM(this.keyPair.privateKey),
-        publicKeyPEM: await this.exportPublicKeyToPEM(this.keyPair.publicKey)
+        privateKeyPEM: await this.exportPrivateKeyToPEM(keyPair.privateKey),
+        publicKeyPEM: await this.exportPublicKeyToPEM(keyPair.publicKey)
       };
 
     } catch (error) {
@@ -498,62 +501,22 @@ class Ed25519CertificateGenerator {
   }
 
   /**
-   * 生成中间 CA 证书
+   * 生成Leaf证书
    */
-  async generateIntermediateCA(rootCA, subject, validityYears = 5) {
-    try {
-      console.log('正在生成中间 CA 密钥对...');
-      const keyPair = await this.generateKeyPair();
+  async generateLeafCertificate(subject, validityDays = 365,issuerKeyPair,issuerCertPem,subjectKeyPair) {
+    try {     
+      const issuerSubject = this.loadSubjectFromCertPem(issuerCertPem);
+      console.log('Ed25519CertificateGenerator::generateLeafCertificate::issuerSubject:=<', issuerSubject, '>');
+      console.log('Ed25519CertificateGenerator::generateLeafCertificate::issuerSubject.fields:=<', issuerSubject.fields, '>');
       
-      console.log('正在生成中间 CA 证书...');
+      console.log('正在生成Leaf证书...');
       const certificate = await this.generateCertificate({
-        subjectKeyPair: keyPair,
-        issuerKeyPair: rootCA.keyPair,
+        subjectKeyPair: subjectKeyPair,
+        issuerKeyPair: issuerKeyPair,
         subject: subject,
-        issuer: rootCA.subject,
-        validityDays: validityYears * 365,
-        extensions: {
-          basicConstraints: {
-            critical: true,
-            isCA: true,
-            pathLenConstraint: 0
-          },
-          keyUsage: {
-            critical: true,
-            usage: ['keyCertSign', 'cRLSign']
-          }
-        }
-      });
-
-      console.log('✓ 中间 CA 生成成功');
-      return {
-        keyPair,
-        certificate,
-        privateKeyPEM: await this.exportPrivateKeyToPEM(keyPair.privateKey),
-        publicKeyPEM: await this.exportPublicKeyToPEM(keyPair.publicKey)
-      };
-
-    } catch (error) {
-      throw new Error(`生成中间 CA 时出错: ${error.message}`);
-    }
-  }
-
-  /**
-   * 生成服务器证书
-   */
-  async generateServerCertificate(issuerCA, subject, domains = [], validityDays = 365) {
-    try {
-      console.log('正在生成服务器密钥对...');
-      const keyPair = await this.generateKeyPair();
-      
-      const altNames = domains.map(domain => ({ type: 'dns', value: domain }));
-      
-      console.log('正在生成服务器证书...');
-      const certificate = await this.generateCertificate({
-        subjectKeyPair: keyPair,
-        issuerKeyPair: issuerCA.keyPair,
-        subject: subject,
-        issuer: issuerCA.subject,
+        issuer: issuerSubject.fields,
+        validityDays: validityDays,
+        issuer: issuerSubject.fields,
         validityDays: validityDays,
         extensions: {
           basicConstraints: {
@@ -562,25 +525,91 @@ class Ed25519CertificateGenerator {
           },
           keyUsage: {
             critical: true,
-            usage: ['digitalSignature', 'keyEncipherment']
+            usage: ['digitalSignature', 'keyEncipherment', 'keyAgreement']
           },
-          subjectAltName: {
+          extendedKeyUsage: {
             critical: false,
-            names: altNames
+            usage: ['serverAuth', 'clientAuth']
           }
-        }
+        },
       });
-
-      console.log('✓ 服务器证书生成成功');
+      console.log('✓ Leaf证书生成成功');
       return {
-        keyPair,
         certificate,
-        privateKeyPEM: await this.exportPrivateKeyToPEM(keyPair.privateKey),
-        publicKeyPEM: await this.exportPublicKeyToPEM(keyPair.publicKey)
       };
 
     } catch (error) {
-      throw new Error(`生成服务器证书时出错: ${error.message}`);
+      throw new Error(`生成Leaf证书时出错: ${error.message}`);
+    }
+  }
+
+  /**
+   * 使用PKIJS从证书中加载主题信息
+   * @param {string} certPEM - PEM格式的证书字符串
+   * @returns {Object} 主题信息对象
+   */
+  loadSubjectFromCertPem(certPEM) {
+    try {
+      console.log('使用PKIJS解析证书...');
+      
+      // 清理PEM格式
+      const pemClean = certPEM
+        .replace(/-----BEGIN CERTIFICATE-----/g, '')
+        .replace(/-----END CERTIFICATE-----/g, '')
+        .replace(/[\n\r\s]/g, '');
+      
+      // 将Base64转换为ArrayBuffer
+      const certDER = Uint8Array.from(atob(pemClean), c => c.charCodeAt(0));
+      const asn1Obj = asn1.fromBER(certDER.buffer);
+      
+      if (asn1Obj.offset === -1) {
+        throw new Error('ASN.1解析失败');
+      }
+      
+      // 使用PKIJS解析证书
+      const certificate = new Certificate({ schema: asn1Obj.result });
+      
+      // 提取主题信息
+      const subject = certificate.subject;
+      console.log('证书主题:', subject.typesAndValues);
+      
+      // 将主题信息转换为更易用的格式
+      const subjectInfo = {
+        raw: subject,
+        fields: {},
+        string: subject.toString()
+      };
+      
+      // 解析各个字段
+      subject.typesAndValues.forEach(field => {
+        const type = field.type.toString();
+        const value = field.value.valueBlock.value;
+        
+        // 常见字段类型映射
+        const fieldMap = {
+          '2.5.4.3': 'CN',           // Common Name
+          '2.5.4.6': 'C',            // Country
+          '2.5.4.7': 'L',            // Locality
+          '2.5.4.8': 'ST',           // State/Province
+          '2.5.4.10': 'O',           // Organization
+          '2.5.4.11': 'OU',          // Organizational Unit
+          '2.5.4.12': 'T',           // Title
+          '2.5.4.42': 'GN',          // Given Name
+          '2.5.4.4': 'SN',           // Surname
+          '2.5.4.5': 'SERIALNUMBER', // Serial Number
+          '1.2.840.113549.1.9.1': 'EMAIL' // Email Address
+        };
+        
+        const fieldName = fieldMap[type] || type;
+        subjectInfo.fields[fieldName] = value;
+      });
+      
+      console.log('解析后的主题字段:', subjectInfo.fields);
+      return subjectInfo;
+      
+    } catch (error) {
+      console.error('PKIJS解析失败:', error);
+      throw new Error(`从证书中加载主题信息时出错: ${error.message}`);
     }
   }
 
@@ -623,69 +652,3 @@ class Ed25519CertificateGenerator {
 // 导出类
 export { Ed25519CertificateGenerator };
 
-/**
- * 使用示例
- */
-async function exampleUsage() {
-  const generator = new Ed25519CertificateGenerator();
-
-  try {
-    // 1. 生成根 CA
-    const rootCA = await generator.generateRootCA({
-      C: 'CN',
-      ST: 'Beijing',
-      L: 'Beijing',
-      O: 'My Company',
-      OU: 'IT Department',
-      CN: 'My Root CA'
-    }, 10);
-
-    await generator.saveToFiles(rootCA, 'root_ca');
-
-    // 2. 生成中间 CA
-    const intermediateCA = await generator.generateIntermediateCA(
-      {
-        keyPair: rootCA.keyPair,
-        subject: rootCA.subject
-      },
-      {
-        C: 'CN',
-        ST: 'Beijing',
-        L: 'Beijing',
-        O: 'My Company',
-        OU: 'Web Department',
-        CN: 'My Intermediate CA'
-      },
-      5
-    );
-
-    await generator.saveToFiles(intermediateCA, 'intermediate_ca');
-
-    // 3. 生成服务器证书
-    const serverCert = await generator.generateServerCertificate(
-      {
-        keyPair: intermediateCA.keyPair,
-        subject: intermediateCA.subject
-      },
-      {
-        C: 'CN',
-        ST: 'Beijing',
-        L: 'Beijing',
-        O: 'My Company',
-        CN: 'api.example.com'
-      },
-      ['api.example.com', 'www.example.com'],
-      365
-    );
-
-    await generator.saveToFiles(serverCert, 'server');
-
-    console.log('=== 所有证书生成完成 ===');
-
-  } catch (error) {
-    console.error('示例执行出错:', error);
-  }
-}
-
-// 运行示例
-// exampleUsage();

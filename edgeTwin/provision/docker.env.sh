@@ -18,6 +18,7 @@ docker run -it
   -v /dev/shm/:/dev/shm/
   -v /var/run/:/var/run/
   -v /opt/secure/dts/provision/factory:/secure/factory
+  -v /opt/secure/dts/provision/cluster:/secure/cluster
   -v /opt/secure/dts/provision/cloud:/secure/cloud
   -v /opt/secure/dts/provision/enduser:/secure/enduser
   -v ${GPARENT_DIR}:${GPARENT_DIR} 

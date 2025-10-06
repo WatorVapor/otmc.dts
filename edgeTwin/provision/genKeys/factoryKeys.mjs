@@ -2,20 +2,20 @@ import {createOrLoadKeys,createCertificate} from '../keyUtils/Ed25519Key.mjs';
 
 import { join } from 'path';
 
-const factoryDir = '/secure/factory/'
+const secureDir = '/secure/factory/'
 
-const privRootCAKeyFilePath = join(factoryDir, 'keys', 'rootca.priv.key');
-const pubRootCAKeyFilePath = join(factoryDir, 'keys', 'rootca.pub.key');
+const privRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.priv.key');
+const pubRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.pub.key');
 
-const privServerKeyFilePath = join(factoryDir, 'keys', 'server.priv.key');
-const pubServerKeyFilePath = join(factoryDir, 'keys', 'server.pub.key');
+const privServerKeyFilePath = join(secureDir, 'keys', 'server.priv.key');
+const pubServerKeyFilePath = join(secureDir, 'keys', 'server.pub.key');
 
-const privClientKeyFilePath = join(factoryDir, 'keys', 'client.priv.key');
-const pubClientKeyFilePath = join(factoryDir, 'keys', 'client.pub.key');
+const privClientKeyFilePath = join(secureDir, 'keys', 'client.priv.key');
+const pubClientKeyFilePath = join(secureDir, 'keys', 'client.pub.key');
 
-const rootCAFilePath = join(factoryDir, 'ssl', 'rootca.crt');
-const serverCAFilePath = join(factoryDir, 'ssl', 'server.crt');
-const clientCAFilePath = join(factoryDir, 'ssl', 'client.crt');
+const rootCAFilePath = join(secureDir, 'ssl', 'rootca.crt');
+const serverCAFilePath = join(secureDir, 'ssl', 'server.crt');
+const clientCAFilePath = join(secureDir, 'ssl', 'client.crt');
 
 
 const rootCASubject = {

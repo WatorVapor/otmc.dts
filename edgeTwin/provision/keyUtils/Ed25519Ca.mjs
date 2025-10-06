@@ -1,9 +1,7 @@
 import { webcrypto } from 'crypto';
 import { writeFile, readFile } from 'fs/promises';
 import asn1 from 'asn1js';
-import { Certificate  } from 'pkijs';
-
-
+import { Certificate } from 'pkijs';
 
 const { subtle } = webcrypto;
 
@@ -13,23 +11,32 @@ const { subtle } = webcrypto;
 class Ed25519CertificateGenerator {
   constructor() {
     this.keyUsages = {
-      digitalSignature: 0x80, // 位0
-      nonRepudiation: 0x40,   // 位1
-      keyEncipherment: 0x20,  // 位2
-      dataEncipherment: 0x10, // 位3
-      keyAgreement: 0x08,     // 位4
-      keyCertSign: 0x04,      // 位5
-      cRLSign: 0x02,          // 位6
-      encipherOnly: 0x01,     // 位7
-      decipherOnly: 0x80      // 位7 (与encipherOnly相同位，但用于keyAgreement)
+      digitalSignature: 0x80,
+      nonRepudiation: 0x40,
+      keyEncipherment: 0x20,
+      dataEncipherment: 0x10,
+      keyAgreement: 0x08,
+      keyCertSign: 0x04,
+      cRLSign: 0x02,
+      encipherOnly: 0x01,
+      decipherOnly: 0x80
     };
+    
+    this.extendedKeyUsages = {
+      serverAuth: '1.3.6.1.5.5.7.3.1',
+      clientAuth: '1.3.6.1.5.5.7.3.2',
+      codeSigning: '1.3.6.1.5.5.7.3.3',
+      emailProtection: '1.3.6.1.5.5.7.3.4',
+      timeStamping: '1.3.6.1.5.5.7.3.8',
+      ocspSigning: '1.3.6.1.5.5.7.3.9'
+    };
+    
     this.keyPair = null;
     this.privateKey = null;
     this.publicKey = null;
     this.privateKeyPEM = null;
     this.publicKeyPEM = null;
-
-}
+  }
 
   /**
    * 生成随机的序列号
@@ -78,6 +85,11 @@ class Ed25519CertificateGenerator {
       this.keyPair = keyPair;
       this.privateKey = keyPair.privateKey;
       this.publicKey = keyPair.publicKey;
+      
+      // 自动导出 PEM 格式
+      this.privateKeyPEM = await this.exportPrivateKeyToPEM(keyPair.privateKey);
+      this.publicKeyPEM = await this.exportPublicKeyToPEM(keyPair.publicKey);
+      
       return keyPair;
     } catch (error) {
       throw new Error(`生成密钥对时出错: ${error.message}`);
@@ -105,12 +117,15 @@ class Ed25519CertificateGenerator {
         true,
         ['sign']
       );
+      
       this.privateKey = privateKey;
       this.privateKeyPEM = pem;
-      if(!this.keyPair) {
+      
+      if (!this.keyPair) {
         this.keyPair = {};
       }
       this.keyPair.privateKey = privateKey;
+      
       return privateKey;
     } catch (error) {
       throw new Error(`导入私钥时出错: ${error.message}`);
@@ -138,12 +153,15 @@ class Ed25519CertificateGenerator {
         true,
         ['verify']
       );
+      
       this.publicKey = publicKey;
       this.publicKeyPEM = pem;
-      if(!this.keyPair) {
+      
+      if (!this.keyPair) {
         this.keyPair = {};
       }
       this.keyPair.publicKey = publicKey;
+      
       return publicKey;
     } catch (error) {
       throw new Error(`导入公钥时出错: ${error.message}`);
@@ -164,6 +182,7 @@ class Ed25519CertificateGenerator {
       throw new Error(`导出私钥时出错: ${error.message}`);
     }
   }
+
   /**
    * 导出公钥为 PEM 格式
    */
@@ -177,12 +196,6 @@ class Ed25519CertificateGenerator {
     } catch (error) {
       throw new Error(`导出公钥时出错: ${error.message}`);
     }
-  }
-
-  /**
-   * 从私钥创建公钥
-   */
-  async createPublicKeyFromPrivateKey() {
   }
 
   /**
@@ -224,6 +237,31 @@ class Ed25519CertificateGenerator {
   }
 
   /**
+   * 创建扩展密钥用法扩展
+   */
+  createExtendedKeyUsage(extendedKeyUsageConfig) {
+    const keyPurposes = extendedKeyUsageConfig.usage.map(usage => {
+      const oid = this.extendedKeyUsages[usage];
+      if (!oid) {
+        throw new Error(`不支持的扩展密钥用法: ${usage}`);
+      }
+      return new asn1.ObjectIdentifier({ value: oid });
+    });
+
+    return new asn1.Sequence({
+      value: [
+        new asn1.ObjectIdentifier({ value: '2.5.29.37' }), // extendedKeyUsage
+        new asn1.Boolean({ value: extendedKeyUsageConfig.critical || false }),
+        new asn1.OctetString({
+          valueHex: new asn1.Sequence({
+            value: keyPurposes
+          }).toBER()
+        })
+      ]
+    });
+  }
+
+  /**
    * 创建证书扩展
    */
   createExtensions(extensionsConfig) {
@@ -234,7 +272,7 @@ class Ed25519CertificateGenerator {
       extensions.push(
         new asn1.Sequence({
           value: [
-            new asn1.ObjectIdentifier({ value: '2.5.29.19' }), // basicConstraints
+            new asn1.ObjectIdentifier({ value: '2.5.29.19' }),
             new asn1.Boolean({ value: extensionsConfig.basicConstraints.critical || true }),
             new asn1.OctetString({
               valueHex: new asn1.Sequence({
@@ -259,16 +297,22 @@ class Ed25519CertificateGenerator {
       extensions.push(
         new asn1.Sequence({
           value: [
-            new asn1.ObjectIdentifier({ value: '2.5.29.15' }), // keyUsage
+            new asn1.ObjectIdentifier({ value: '2.5.29.15' }),
             new asn1.Boolean({ value: extensionsConfig.keyUsage.critical || true }),
             new asn1.OctetString({
               valueHex: new asn1.BitString({
-                valueHex: new Uint8Array([(keyUsageBits >> 8) & 0xFF, keyUsageBits & 0xFF])
+                valueHex: new Uint8Array([keyUsageBits & 0xFF]),
+                unusedBits: 0
               }).toBER()
             })
           ]
         })
       );
+    }
+    
+    // 扩展密钥用法
+    if (extensionsConfig.extendedKeyUsage) {
+      extensions.push(this.createExtendedKeyUsage(extensionsConfig.extendedKeyUsage));
     }
     
     // 主题备用名称
@@ -277,26 +321,26 @@ class Ed25519CertificateGenerator {
         if (name.type === 'dns') {
           return new asn1.Constructed({
             idBlock: {
-              tagClass: 2, // context-specific
-              tagNumber: 2 // dNSName
+              tagClass: 2,
+              tagNumber: 2
             },
             value: [new asn1.Utf8String({ value: name.value })]
           });
         } else if (name.type === 'ip') {
           return new asn1.Constructed({
             idBlock: {
-              tagClass: 2, // context-specific
-              tagNumber: 7 // iPAddress
+              tagClass: 2,
+              tagNumber: 7
             },
             value: [new asn1.OctetString({ valueHex: this.ipToBuffer(name.value) })]
           });
         }
-      });
+      }).filter(Boolean);
       
       extensions.push(
         new asn1.Sequence({
           value: [
-            new asn1.ObjectIdentifier({ value: '2.5.29.17' }), // subjectAltName
+            new asn1.ObjectIdentifier({ value: '2.5.29.17' }),
             new asn1.Boolean({ value: extensionsConfig.subjectAltName.critical || false }),
             new asn1.OctetString({
               valueHex: new asn1.Sequence({
@@ -323,7 +367,6 @@ class Ed25519CertificateGenerator {
       
       for (const part of parts) {
         if (part === '') {
-          // 处理 ::
           const zeros = 16 - (parts.length - 1) * 2;
           for (let i = 0; i < zeros; i++) {
             buffer[index++] = 0;
@@ -376,21 +419,21 @@ class Ed25519CertificateGenerator {
           // 版本号 (v3)
           new asn1.Constructed({
             idBlock: {
-              tagClass: 3, // context-specific
+              tagClass: 3,
               tagNumber: 0
             },
             value: [
-              new asn1.Integer({ value: 2 }) // v3
+              new asn1.Integer({ value: 2 })
             ]
           }),
           
           // 序列号
           new asn1.Integer({ valueHex: Buffer.from(serialNumber) }),
           
-          // 签名算法 (Ed25519)
+          // 签名算法
           new asn1.Sequence({
             value: [
-              new asn1.ObjectIdentifier({ value: '1.3.101.112' }) // Ed25519 OID
+              new asn1.ObjectIdentifier({ value: '1.3.101.112' })
             ]
           }),
           
@@ -412,13 +455,15 @@ class Ed25519CertificateGenerator {
           spkiASN1.result,
           
           // 扩展
-          new asn1.Constructed({
-            idBlock: {
-              tagClass: 3,
-              tagNumber: 3
-            },
-            value: [this.createExtensions(extensions)]
-          })
+          ...(Object.keys(extensions).length > 0 ? [
+            new asn1.Constructed({
+              idBlock: {
+                tagClass: 3,
+                tagNumber: 3
+              },
+              value: [this.createExtensions(extensions)]
+            })
+          ] : [])
         ]
       });
 
@@ -438,7 +483,7 @@ class Ed25519CertificateGenerator {
           // 签名算法
           new asn1.Sequence({
             value: [
-              new asn1.ObjectIdentifier({ value: '1.3.101.112' }) // Ed25519 OID
+              new asn1.ObjectIdentifier({ value: '1.3.101.112' })
             ]
           }),
           
@@ -464,13 +509,16 @@ class Ed25519CertificateGenerator {
   /**
    * 生成根 CA 证书
    */
-  async generateRootCA(subject, validityYears = 10, keyPair = this.keyPair) {
+  async generateRootCA(subject, validityYears = 10, keyPair = null) {
     try {
+      if (!keyPair) {
+        keyPair = await this.generateKeyPair();
+      }
       
       console.log('正在生成根 CA 证书...');
       const certificate = await this.generateCertificate({
         subjectKeyPair: keyPair,
-        issuerKeyPair: keyPair, // 自签名
+        issuerKeyPair: keyPair,
         subject: subject,
         issuer: subject,
         validityDays: validityYears * 365,
@@ -491,8 +539,8 @@ class Ed25519CertificateGenerator {
       return {
         keyPair: keyPair,
         certificate,
-        privateKeyPEM: await this.exportPrivateKeyToPEM(keyPair.privateKey),
-        publicKeyPEM: await this.exportPublicKeyToPEM(keyPair.publicKey)
+        privateKeyPEM: this.privateKeyPEM,
+        publicKeyPEM: this.publicKeyPEM
       };
 
     } catch (error) {
@@ -503,19 +551,19 @@ class Ed25519CertificateGenerator {
   /**
    * 生成Leaf证书
    */
-  async generateLeafCertificate(subject, validityDays = 365,issuerKeyPair,issuerCertPem,subjectKeyPair) {
-    try {     
-      const issuerSubject = this.loadSubjectFromCertPem(issuerCertPem);
-      console.log('Ed25519CertificateGenerator::generateLeafCertificate::issuerSubject:=<', issuerSubject, '>');
-      console.log('Ed25519CertificateGenerator::generateLeafCertificate::issuerSubject.fields:=<', issuerSubject.fields, '>');
+  async generateLeafCertificate(subject, validityDays = 365, issuerKeyPair, issuerCertPem, subjectKeyPair = null) {
+    try {
+      if (!subjectKeyPair) {
+        subjectKeyPair = await this.generateKeyPair();
+      }
       
+      const issuerSubject = this.loadSubjectFromCertPem(issuerCertPem);
       console.log('正在生成Leaf证书...');
+      
       const certificate = await this.generateCertificate({
         subjectKeyPair: subjectKeyPair,
         issuerKeyPair: issuerKeyPair,
         subject: subject,
-        issuer: issuerSubject.fields,
-        validityDays: validityDays,
         issuer: issuerSubject.fields,
         validityDays: validityDays,
         extensions: {
@@ -528,14 +576,18 @@ class Ed25519CertificateGenerator {
             usage: ['digitalSignature', 'keyEncipherment', 'keyAgreement']
           },
           extendedKeyUsage: {
-            critical: false,
+            critical: true,
             usage: ['serverAuth', 'clientAuth']
           }
-        },
+        }
       });
+      
       console.log('✓ Leaf证书生成成功');
       return {
         certificate,
+        keyPair: subjectKeyPair,
+        privateKeyPEM: await this.exportPrivateKeyToPEM(subjectKeyPair.privateKey),
+        publicKeyPEM: await this.exportPublicKeyToPEM(subjectKeyPair.publicKey)
       };
 
     } catch (error) {
@@ -545,21 +597,17 @@ class Ed25519CertificateGenerator {
 
   /**
    * 使用PKIJS从证书中加载主题信息
-   * @param {string} certPEM - PEM格式的证书字符串
-   * @returns {Object} 主题信息对象
    */
   loadSubjectFromCertPem(certPEM) {
     try {
-      console.log('使用PKIJS解析证书...');
-      
       // 清理PEM格式
       const pemClean = certPEM
-        .replace(/-----BEGIN CERTIFICATE-----/g, '')
-        .replace(/-----END CERTIFICATE-----/g, '')
-        .replace(/[\n\r\s]/g, '');
+        .replace(/-----BEGIN CERTIFICATE-----/, '')
+        .replace(/-----END CERTIFICATE-----/, '')
+        .replace(/\n/g, '');
       
       // 将Base64转换为ArrayBuffer
-      const certDER = Uint8Array.from(atob(pemClean), c => c.charCodeAt(0));
+      const certDER = Uint8Array.from(Buffer.from(pemClean, 'base64'));
       const asn1Obj = asn1.fromBER(certDER.buffer);
       
       if (asn1Obj.offset === -1) {
@@ -571,7 +619,6 @@ class Ed25519CertificateGenerator {
       
       // 提取主题信息
       const subject = certificate.subject;
-      console.log('证书主题:', subject.typesAndValues);
       
       // 将主题信息转换为更易用的格式
       const subjectInfo = {
@@ -582,33 +629,26 @@ class Ed25519CertificateGenerator {
       
       // 解析各个字段
       subject.typesAndValues.forEach(field => {
-        const type = field.type.toString();
+        const type = field.type;
         const value = field.value.valueBlock.value;
         
-        // 常见字段类型映射
         const fieldMap = {
-          '2.5.4.3': 'CN',           // Common Name
-          '2.5.4.6': 'C',            // Country
-          '2.5.4.7': 'L',            // Locality
-          '2.5.4.8': 'ST',           // State/Province
-          '2.5.4.10': 'O',           // Organization
-          '2.5.4.11': 'OU',          // Organizational Unit
-          '2.5.4.12': 'T',           // Title
-          '2.5.4.42': 'GN',          // Given Name
-          '2.5.4.4': 'SN',           // Surname
-          '2.5.4.5': 'SERIALNUMBER', // Serial Number
-          '1.2.840.113549.1.9.1': 'EMAIL' // Email Address
+          '2.5.4.3': 'CN',
+          '2.5.4.6': 'C',
+          '2.5.4.7': 'L',
+          '2.5.4.8': 'ST',
+          '2.5.4.10': 'O',
+          '2.5.4.11': 'OU',
+          '1.2.840.113549.1.9.1': 'EMAIL'
         };
         
         const fieldName = fieldMap[type] || type;
         subjectInfo.fields[fieldName] = value;
       });
       
-      console.log('解析后的主题字段:', subjectInfo.fields);
       return subjectInfo;
       
     } catch (error) {
-      console.error('PKIJS解析失败:', error);
       throw new Error(`从证书中加载主题信息时出错: ${error.message}`);
     }
   }
@@ -635,20 +675,33 @@ class Ed25519CertificateGenerator {
     try {
       if (certData.privateKeyPEM) {
         await writeFile(`${baseName}_private.pem`, certData.privateKeyPEM);
+        console.log(`✓ 私钥已保存: ${baseName}_private.pem`);
       }
       if (certData.publicKeyPEM) {
         await writeFile(`${baseName}_public.pem`, certData.publicKeyPEM);
+        console.log(`✓ 公钥已保存: ${baseName}_public.pem`);
       }
       if (certData.certificate) {
         await writeFile(`${baseName}_certificate.pem`, certData.certificate);
+        console.log(`✓ 证书已保存: ${baseName}_certificate.pem`);
       }
-      console.log(`✓ 文件已保存: ${baseName}_*.pem`);
     } catch (error) {
       throw new Error(`保存文件时出错: ${error.message}`);
+    }
+  }
+
+  /**
+   * 从文件加载证书
+   */
+  async loadCertificateFromFile(filename) {
+    try {
+      const pem = await readFile(filename, 'utf8');
+      return pem;
+    } catch (error) {
+      throw new Error(`从文件加载证书时出错: ${error.message}`);
     }
   }
 }
 
 // 导出类
 export { Ed25519CertificateGenerator };
-

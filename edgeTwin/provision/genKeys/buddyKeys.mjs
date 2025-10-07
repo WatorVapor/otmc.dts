@@ -2,7 +2,7 @@ import {createOrLoadKeys,createCertificate} from '../keyUtils/Ed25519Key.mjs';
 
 import { join } from 'path';
 
-const secureDir = '/secure/cluster/'
+const secureDir = '/secure/buddy/'
 
 const privRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.priv.key');
 const pubRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.pub.key');

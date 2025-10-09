@@ -595,6 +595,259 @@ class Ed25519CertificateGenerator {
     }
   }
 
+
+  /**
+   * 生成CSR Certificate Signing Request
+   */
+  async generateCSR(subject,validityYears = 10, subjectKeyPair = null) {
+    try {
+      if (!subjectKeyPair) {
+        subjectKeyPair = await this.generateKeyPair();
+      }
+
+      console.log('正在生成CSR...');
+
+      const notBefore = new Date();
+      const notAfter = new Date();
+      notAfter.setFullYear(notAfter.getFullYear() + validityYears);
+
+      // 获取公钥的 DER 编码
+      const rawPublicKey = await subtle.exportKey('spki', subjectKeyPair.publicKey);
+      const publicKeyBuffer = new Uint8Array(rawPublicKey);
+      const spkiASN1 = asn1.fromBER(publicKeyBuffer.buffer);
+      if (spkiASN1.offset === -1) {
+        throw new Error('Failed to parse SPKI');
+      }
+
+      // 构建 CSR 信息结构
+      const certificationRequestInfo = new asn1.Sequence({
+        value: [
+          // 版本号
+          new asn1.Integer({ value: 0 }),
+          
+          // 主题
+          this.createName(subject),
+          
+          // 主题公钥信息
+          spkiASN1.result,
+          
+          // 属性（可选，用于请求扩展）
+          new asn1.Constructed({
+            idBlock: {
+              tagClass: 3,
+              tagNumber: 0
+            },
+            value: [
+              new asn1.Sequence({
+                value: [
+                  // 扩展请求属性
+                  new asn1.Sequence({
+                    value: [
+                      new asn1.ObjectIdentifier({ value: '1.2.840.113549.1.9.14' }), // extensionRequest
+                      new asn1.Set({
+                        value: [
+                          new asn1.Sequence({
+                            value: [this.createExtensions({
+                              basicConstraints: {
+                                critical: true,
+                                isCA: false
+                              },
+                              keyUsage: {
+                                critical: true,
+                                usage: ['digitalSignature', 'keyEncipherment', 'keyAgreement']
+                              },
+                              extendedKeyUsage: {
+                                critical: true,
+                                usage: ['serverAuth', 'clientAuth']
+                              }
+                            })]
+                          })
+                        ]
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      });
+
+      // 对 CSR 信息进行签名
+      const csrInfoBuffer = certificationRequestInfo.toBER();
+      const signature = await subtle.sign(
+        'Ed25519',
+        subjectKeyPair.privateKey,
+        csrInfoBuffer
+      );
+
+      // 构建完整的 CSR
+      const csr = new asn1.Sequence({
+        value: [
+          certificationRequestInfo,
+          
+          // 签名算法
+          new asn1.Sequence({
+            value: [
+              new asn1.ObjectIdentifier({ value: '1.3.101.112' }) // Ed25519 OID
+            ]
+          }),
+          
+          // 签名值
+          new asn1.BitString({
+            valueHex: Buffer.from(signature)
+          })
+        ]
+      });
+
+      // 转换为 PEM 格式
+      const derBuffer = csr.toBER();
+      const derBase64 = Buffer.from(derBuffer).toString('base64');
+      const csrPEM = `-----BEGIN CERTIFICATE REQUEST-----\n${derBase64.match(/.{1,64}/g).join('\n')}\n-----END CERTIFICATE REQUEST-----\n`;
+
+      console.log('✓ CSR生成成功');
+      return {
+        csr: csrPEM,
+        keyPair: subjectKeyPair,
+        privateKeyPEM: await this.exportPrivateKeyToPEM(subjectKeyPair.privateKey),
+        publicKeyPEM: await this.exportPublicKeyToPEM(subjectKeyPair.publicKey)
+      };
+
+    } catch (error) {
+      throw new Error(`生成CSR时出错: ${error.message}`);
+    }
+  }
+
+  /**
+   * 从CSR PEM解析主题信息
+   */
+  parseSubjectFromCSR(csrPEM) {
+    try {
+      // 清理PEM格式
+      const pemClean = csrPEM
+        .replace(/-----BEGIN CERTIFICATE REQUEST-----/, '')
+        .replace(/-----END CERTIFICATE REQUEST-----/, '')
+        .replace(/\n/g, '');
+      
+      // 将Base64转换为ArrayBuffer
+      const csrDER = Uint8Array.from(Buffer.from(pemClean, 'base64'));
+      const asn1Obj = asn1.fromBER(csrDER.buffer);
+      
+      if (asn1Obj.offset === -1) {
+        throw new Error('ASN.1解析失败');
+      }
+      
+      // 解析CSR结构
+      const csrSequence = asn1Obj.result;
+      const certificationRequestInfo = csrSequence.valueBlock.value[0]; // 第一个元素是CertificationRequestInfo
+      
+      // 主题是CertificationRequestInfo中的第二个元素（索引1）
+      const subjectSequence = certificationRequestInfo.valueBlock.value[1];
+      
+      // 解析主题信息
+      const subjectInfo = {
+        raw: subjectSequence,
+        fields: {},
+        string: ''
+      };
+      
+      // 主题是一个Sequence of Set of Sequence
+      const subjectSet = subjectSequence.valueBlock.value[0]; // 第一个Set
+      
+      subjectSet.valueBlock.value.forEach(attrSeq => {
+        const attrType = attrSeq.valueBlock.value[0]; // OID
+        const attrValue = attrSeq.valueBlock.value[1]; // 值
+        
+        const oid = attrType.valueBlock.toString();
+        const value = attrValue.valueBlock.toString();
+        
+        const fieldMap = {
+          '2.5.4.3': 'CN',
+          '2.5.4.6': 'C',
+          '2.5.4.7': 'L',
+          '2.5.4.8': 'ST',
+          '2.5.4.10': 'O',
+          '2.5.4.11': 'OU',
+          '1.2.840.113549.1.9.1': 'EMAIL'
+        };
+        
+        const fieldName = fieldMap[oid] || oid;
+        subjectInfo.fields[fieldName] = value;
+        
+        // 构建主题字符串
+        if (subjectInfo.string) {
+          subjectInfo.string += ', ';
+        }
+        subjectInfo.string += `${fieldName}=${value}`;
+      });
+      
+      return subjectInfo;
+      
+    } catch (error) {
+      throw new Error(`从CSR解析主题信息时出错: ${error.message}`);
+    }
+  }
+
+  /**
+   * 验证CSR签名
+   */
+  async verifyCSR(csrPEM, publicKeyPEM = null) {
+    try {
+      // 清理PEM格式
+      const pemClean = csrPEM
+        .replace(/-----BEGIN CERTIFICATE REQUEST-----/, '')
+        .replace(/-----END CERTIFICATE REQUEST-----/, '')
+        .replace(/\n/g, '');
+      
+      const csrDER = Uint8Array.from(Buffer.from(pemClean, 'base64'));
+      const asn1Obj = asn1.fromBER(csrDER.buffer);
+      
+      if (asn1Obj.offset === -1) {
+        throw new Error('ASN.1解析失败');
+      }
+      
+      const csrSequence = asn1Obj.result;
+      const certificationRequestInfo = csrSequence.valueBlock.value[0];
+      const signatureAlgorithm = csrSequence.valueBlock.value[1];
+      const signatureValue = csrSequence.valueBlock.value[2];
+      
+      // 获取签名数据
+      const tbsBuffer = certificationRequestInfo.toBER();
+      const signature = signatureValue.valueBlock.valueHex;
+      
+      let publicKey;
+      
+      if (publicKeyPEM) {
+        // 使用提供的公钥验证
+        publicKey = await this.importPublicKeyFromPEM(publicKeyPEM);
+      } else {
+        // 从CSR中提取公钥
+        const subjectPKInfo = certificationRequestInfo.valueBlock.value[2]; // 第三个元素是公钥信息
+        const publicKeyBuffer = subjectPKInfo.toBER();
+        publicKey = await subtle.importKey(
+          'spki',
+          publicKeyBuffer,
+          { name: 'Ed25519' },
+          true,
+          ['verify']
+        );
+      }
+      
+      // 验证签名
+      const isValid = await subtle.verify(
+        'Ed25519',
+        publicKey,
+        signature,
+        tbsBuffer
+      );
+      
+      return isValid;
+      
+    } catch (error) {
+      throw new Error(`验证CSR签名时出错: ${error.message}`);
+    }
+  }
+
   /**
    * 使用PKIJS从证书中加载主题信息
    */

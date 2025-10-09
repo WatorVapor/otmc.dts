@@ -90,4 +90,26 @@ const createCertificate = async (caFilePath, subject, validityYears,issuerKeyPai
   }
 }
 
-export { createOrLoadKeys,createCertificate };
+const createCSR = async (csrFilePath, subject, validityYears,subjectKeyPair) => {
+  if (!existsSync(csrFilePath)) {
+    console.log('未检测到CSR文件，开始生成CSR');
+    const csr = await keyGenerator.generateCSR(subject, validityYears,subjectKeyPair);
+    console.log('factoryKeys::Global::csr:=<', csr, '>');
+    // 确保证书目录存在
+    const csrDir = path.dirname(csrFilePath);
+    if (!existsSync(csrDir)) {
+      console.log('CSR目录不存在，开始创建');
+      mkdirSync(csrDir, { recursive: true });
+      console.log('CSR目录已创建:', csrDir);
+    }
+    // 保存CSR
+    writeFileSync(csrFilePath, csr.csr);
+    console.log('CSR已保存至:', csrFilePath);
+    return csr;
+  } else {
+    console.log('CSR文件已存在，跳过生成');
+    return readFileSync(csrFilePath, 'utf8');
+  }
+}
+
+export { createOrLoadKeys,createCertificate,createCSR };

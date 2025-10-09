@@ -18,11 +18,16 @@ const serverCAFilePath = join(secureDir, 'ssl', 'server.crt');
 const clientCAFilePath = join(secureDir, 'ssl', 'client.crt');
 
 
-
+// C: 国家代码 (Country)
+// ST: 州或省 (State)
+// L: 城市 (Locality)
+// O: 组织 (Organization)
+// OU: 组织单位 (Organizational Unit)
+// CN: 通用名称 (Common Name)
 const rootCASubject = {
   C: 'xyz',
   ST: 'wator',
-  L: 'wator',
+  L: 'otmc',
   O: 'otmc',
   OU: 'dts',
   CN: 'Digital Twin Root CA for Cluster Provisioning'
@@ -32,22 +37,22 @@ const validityYearsRootCA = 20;
 const serverCASubject = {
   C: 'xyz',
   ST: 'wator',
-  L: 'wator',
+  L: 'otmc',
   O: 'otmc',
   OU: 'dts',
-  CN: 'Digital Twin Server CA for Cluster Provisioning'
+  CN: 'Digital Twin Server Certificate for Cluster Provisioning'
 };
-const validityYearsServerCA = 20;
+const validityYearsServer = 20;
 
 const clientCASubject = {
   C: 'xyz',
   ST: 'wator',
-  L: 'wator',
+  L: 'otmc',
   O: 'otmc',
   OU: 'dts',
-  CN: 'Digital Twin Client CA for Cluster Provisioning'
+  CN: 'Digital Twin Client Certificate for Cluster Provisioning'
 };
-const validityYearsClientCA = 20;
+const validityYearsClient = 20;
 
 
 
@@ -60,13 +65,13 @@ const rootCACert = await createCertificate(rootCAFilePath, rootCASubject, validi
 
 
 const serverCAKeyPair = await createOrLoadKeys(privServerKeyFilePath, pubServerKeyFilePath);
-const serverCACert = await createCertificate(serverCAFilePath, serverCASubject, validityYearsServerCA,rootCAKeyPair,rootCACert,serverCAKeyPair);
+const serverCACert = await createCertificate(serverCAFilePath, serverCASubject, validityYearsServer,rootCAKeyPair,rootCACert,serverCAKeyPair);
 
 // openssl x509 -in /secure/cluster/ssl/server.crt -noout -text
 // openssl verify -CAfile /secure/cluster/ssl/rootca.crt /secure/cluster/ssl/server.crt
 
 const clientCAKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
-const clientCACert = await createCertificate(clientCAFilePath, clientCASubject, validityYearsClientCA,rootCAKeyPair,rootCACert,clientCAKeyPair);
+const clientCACert = await createCertificate(clientCAFilePath, clientCASubject, validityYearsClient,rootCAKeyPair,rootCACert,clientCAKeyPair);
 
 // openssl x509 -in /secure/cluster/ssl/client.crt -noout -text
 // openssl verify -CAfile /secure/cluster/ssl/rootca.crt /secure/cluster/ssl/client-sample.crt

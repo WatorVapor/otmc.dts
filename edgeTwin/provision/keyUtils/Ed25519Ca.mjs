@@ -848,6 +848,68 @@ class Ed25519CertificateGenerator {
     }
   }
 
+
+  /**
+   * 从 CSR 签发证书
+   */
+  async signCSR(csrPEM, issuerKeyPair, issuerSubject, validityDays = 365, extensions = {}) {
+    try {
+      // 从 CSR 解析主题和公钥
+      const subjectInfo = this.parseSubjectFromCSR(csrPEM);
+      
+      // 从 CSR 提取公钥
+      const pemClean = csrPEM
+        .replace(/-----BEGIN CERTIFICATE REQUEST-----/, '')
+        .replace(/-----END CERTIFICATE REQUEST-----/, '')
+        .replace(/\n/g, '');
+      
+      const csrDER = Uint8Array.from(Buffer.from(pemClean, 'base64'));
+      const asn1Obj = asn1.fromBER(csrDER.buffer);
+      
+      if (asn1Obj.offset === -1) {
+        throw new Error('ASN.1 解析失败');
+      }
+      
+      const csrSequence = asn1Obj.result;
+      const certificationRequestInfo = csrSequence.valueBlock.value[0];
+      const subjectPKInfo = certificationRequestInfo.valueBlock.value[2]; // 公钥信息
+      
+      // 导入公钥
+      const publicKeyBuffer = subjectPKInfo.toBER();
+      const publicKey = await subtle.importKey(
+        'spki',
+        publicKeyBuffer,
+        { name: 'Ed25519' },
+        true,
+        ['verify']
+      );
+      
+      // 创建临时密钥对对象用于证书生成
+      const subjectKeyPair = {
+        publicKey: publicKey,
+        privateKey: null // CSR 不包含私钥
+      };
+      
+      console.log('正在从 CSR 签发证书...');
+      const certificate = await this.generateCertificate({
+        subjectKeyPair: subjectKeyPair,
+        issuerKeyPair: issuerKeyPair,
+        subject: subjectInfo.fields,
+        issuer: issuerSubject,
+        validityDays: validityDays,
+        extensions: extensions
+      });
+      
+      console.log('✓ 从 CSR 签发证书成功');
+      return certificate;
+      
+    } catch (error) {
+      throw new Error(`从 CSR 签发证书时出错: ${error.message}`);
+    }
+  }
+
+
+
   /**
    * 使用PKIJS从证书中加载主题信息
    */

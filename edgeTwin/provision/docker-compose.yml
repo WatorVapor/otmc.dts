@@ -8,4 +8,6 @@ services:
       - /opt/secure/dts/provision/factory/keys/server.priv.key:/etc/nginx/ssl/server.key:ro
       - /opt/secure/dts/provision/factory/ssl/server.crt:/etc/nginx/ssl/server.crt:ro
       - /opt/secure/dts/provision/factory/ssl/rootca.crt:/etc/nginx/ssl/rootca.crt:ro
-      - /dev/shm/:/dev/shm/ 
+      - /dev/shm/:/dev/shm/
+    ports:
+      - '127.0.0.1:9443:443'

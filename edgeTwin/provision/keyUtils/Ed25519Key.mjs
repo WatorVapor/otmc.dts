@@ -1,9 +1,11 @@
 import { existsSync, writeFileSync,mkdirSync,readFileSync } from 'fs';
-import {Ed25519CertificateGenerator} from './Ed25519Ca.mjs';
-import path from 'path';
-console.log('keyUtils::Global::Ed25519CertificateGenerator:=<', Ed25519CertificateGenerator, '>');
+//import {Ed25519CertificateGenerator} from './Ed25519Ca.mjs';
+import {ECDSACertificateGenerator} from './ECDSACa.mjs';
 
-const keyGenerator = new Ed25519CertificateGenerator();
+import path from 'path';
+console.log('keyUtils::Global::ECDSACertificateGenerator:=<', ECDSACertificateGenerator, '>');
+
+const keyGenerator = new ECDSACertificateGenerator();
 
 
 

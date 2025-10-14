@@ -1,6 +1,6 @@
 services:
   nginx:
-    image: nginx:stable
+    image: nginx:stable-alpine
     container_name: nginx
     restart: unless-stopped
     volumes:
@@ -10,4 +10,5 @@ services:
       - /opt/secure/dts/provision/factory/ssl/rootca.crt:/etc/nginx/ssl/rootca.crt:ro
       - /dev/shm/:/dev/shm/
     ports:
-      - '127.0.0.1:9443:443'
+      - '9443:443'
+      #- '127.0.0.1:9443:443'

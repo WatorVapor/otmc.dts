@@ -72,7 +72,7 @@ const createCertificate = async (caFilePath, subject, validityYears,issuerKeyPai
     if(subjectKeyPair === null && issuerCert === null){
       cert = await keyGenerator.generateRootCA(subject, validityYears, issuerKeyPair);
     } else {
-      cert = await keyGenerator.generateLeafCertificate(subject, validityYears, issuerKeyPair,issuerCert,subjectKeyPair);
+      cert = await keyGenerator.generateServerCertificate(subject, validityYears, issuerKeyPair,issuerCert,subjectKeyPair);
     }
     console.log('factoryKeys::Global::cert:=<', cert, '>');
     // 确保证书目录存在

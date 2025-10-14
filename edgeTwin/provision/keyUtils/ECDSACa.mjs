@@ -6,7 +6,8 @@ import { Certificate } from 'pkijs';
 const { subtle } = webcrypto;
 
 /**
- * ECDSA 证书生成器类 (使用 P-256 曲线)
+ * 完整的 ECDSA 证书生成器类 (修复版)
+ * 解决 OpenSSL 公钥解码错误问题
  */
 class ECDSACertificateGenerator {
   constructor() {
@@ -272,29 +273,35 @@ class ECDSACertificateGenerator {
   }
 
   /**
-   * 创建 ECDSA 公钥参数（曲线标识）
+   * 修复的公钥导出方法 - 确保正确的 SPKI 格式
    */
-  createECParameters() {
-    return new asn1.Sequence({
-      value: [
-        new asn1.ObjectIdentifier({ value: '1.2.840.10045.2.1' }), // ecPublicKey
-        new asn1.ObjectIdentifier({ value: this.curveNames[this.curveName] }) // 曲线 OID
-      ]
-    });
+  async exportPublicKeyToProperSPKI(publicKey) {
+    try {
+      // 使用 Web Crypto API 导出原始 SPKI
+      const rawPublicKey = await subtle.exportKey('spki', publicKey);
+      return new Uint8Array(rawPublicKey);
+    } catch (error) {
+      throw new Error(`导出公钥失败: ${error.message}`);
+    }
   }
 
   /**
-   * 创建 ECDSA 主题公钥信息
+   * 修复的主题公钥信息创建方法
    */
   createSubjectPublicKeyInfo(publicKeyBuffer) {
-    return new asn1.Sequence({
-      value: [
-        // 算法标识
-        this.createECParameters(),
-        // 公钥位字符串
-        new asn1.BitString({ valueHex: publicKeyBuffer })
-      ]
-    });
+    try {
+      // 直接使用从 Web Crypto 导出的完整 SPKI
+      // SPKI 已经是 AlgorithmIdentifier + SubjectPublicKey 的正确结构
+      const spkiSequence = asn1.fromBER(publicKeyBuffer.buffer);
+      
+      if (spkiSequence.offset === -1) {
+        throw new Error('解析 SPKI 结构失败');
+      }
+      
+      return spkiSequence.result;
+    } catch (error) {
+      throw new Error(`创建主题公钥信息失败: ${error.message}`);
+    }
   }
 
   /**
@@ -493,7 +500,7 @@ class ECDSACertificateGenerator {
   }
 
   /**
-   * 生成证书
+   * 修复的证书生成方法
    */
   async generateCertificate(params) {
     try {
@@ -511,9 +518,8 @@ class ECDSACertificateGenerator {
       const notAfter = new Date();
       notAfter.setDate(notAfter.getDate() + validityDays);
 
-      // 获取公钥的 DER 编码
-      const rawPublicKey = await subtle.exportKey('spki', subjectKeyPair.publicKey);
-      const publicKeyBuffer = new Uint8Array(rawPublicKey);
+      // 修复：使用正确的公钥导出方法
+      const publicKeyBuffer = await this.exportPublicKeyToProperSPKI(subjectKeyPair.publicKey);
       
       // 构建 TBS 证书结构
       const tbsCertificate = new asn1.Sequence({
@@ -553,7 +559,7 @@ class ECDSACertificateGenerator {
           // 主题
           this.createName(subject),
           
-          // 主题公钥信息
+          // 修复：使用正确的主题公钥信息
           this.createSubjectPublicKeyInfo(publicKeyBuffer),
           
           // 扩展
@@ -647,22 +653,21 @@ class ECDSACertificateGenerator {
   }
 
   /**
-   * 生成Leaf证书
+   * 生成服务器证书
    */
-  async generateLeafCertificate(subject, validityDays = 365, issuerKeyPair, issuerCertPem, subjectKeyPair = null) {
+  async generateServerCertificate(subject, validityDays = 365, issuerKeyPair, issuerSubject, subjectKeyPair = null) {
     try {
       if (!subjectKeyPair) {
         subjectKeyPair = await this.generateKeyPair();
       }
       
-      const issuerSubject = this.loadSubjectFromCertPem(issuerCertPem);
-      console.log(`正在生成 ${this.curveName} Leaf证书...`);
+      console.log(`正在生成 ${this.curveName} 服务器证书...`);
       
       const certificate = await this.generateCertificate({
         subjectKeyPair: subjectKeyPair,
         issuerKeyPair: issuerKeyPair,
         subject: subject,
-        issuer: issuerSubject.fields,
+        issuer: issuerSubject,
         validityDays: validityDays,
         extensions: {
           basicConstraints: {
@@ -680,7 +685,7 @@ class ECDSACertificateGenerator {
         }
       });
       
-      console.log('✓ Leaf证书生成成功');
+      console.log('✓ 服务器证书生成成功');
       return {
         certificate,
         keyPair: subjectKeyPair,
@@ -689,24 +694,66 @@ class ECDSACertificateGenerator {
       };
 
     } catch (error) {
-      throw new Error(`生成Leaf证书时出错: ${error.message}`);
+      throw new Error(`生成服务器证书时出错: ${error.message}`);
+    }
+  }
+
+  /**
+   * 生成客户端证书
+   */
+  async generateClientCertificate(subject, validityDays = 365, issuerKeyPair, issuerSubject, subjectKeyPair = null) {
+    try {
+      if (!subjectKeyPair) {
+        subjectKeyPair = await this.generateKeyPair();
+      }
+      
+      console.log(`正在生成 ${this.curveName} 客户端证书...`);
+      
+      const certificate = await this.generateCertificate({
+        subjectKeyPair: subjectKeyPair,
+        issuerKeyPair: issuerKeyPair,
+        subject: subject,
+        issuer: issuerSubject,
+        validityDays: validityDays,
+        extensions: {
+          basicConstraints: {
+            critical: true,
+            isCA: false
+          },
+          keyUsage: {
+            critical: true,
+            usage: ['digitalSignature', 'keyAgreement']
+          },
+          extendedKeyUsage: {
+            critical: true,
+            usage: ['clientAuth']
+          }
+        }
+      });
+      
+      console.log('✓ 客户端证书生成成功');
+      return {
+        certificate,
+        keyPair: subjectKeyPair,
+        privateKeyPEM: await this.exportPrivateKeyToPEM(subjectKeyPair.privateKey),
+        publicKeyPEM: await this.exportPublicKeyToPEM(subjectKeyPair.publicKey)
+      };
+
+    } catch (error) {
+      throw new Error(`生成客户端证书时出错: ${error.message}`);
     }
   }
 
   /**
    * 生成CSR Certificate Signing Request
    */
-  async generateCSR(subject, validityYears = 10, subjectKeyPair = null) {
+  async generateCSR(subject, subjectKeyPair = null) {
     try {
       if (!subjectKeyPair) {
         subjectKeyPair = await this.generateKeyPair();
       }
 
       console.log(`正在生成 ${this.curveName} CSR...`);
-
-      const notBefore = new Date();
-      const notAfter = new Date();
-      notAfter.setFullYear(notAfter.getFullYear() + validityYears);
 
       // 获取公钥的 DER 编码
       const rawPublicKey = await subtle.exportKey('spki', subjectKeyPair.publicKey);
@@ -721,7 +768,7 @@ class ECDSACertificateGenerator {
           // 主题
           this.createName(subject),
           
-          // 主题公钥信息
+          // 修复：使用正确的主题公钥信息
           this.createSubjectPublicKeyInfo(publicKeyBuffer),
           
           // 属性（可选，用于请求扩展）
@@ -1177,81 +1224,60 @@ class ECDSACertificateGenerator {
       global.gc();
     }
   }
-}
 
-// 使用示例
-async function example() {
-  const generator = new ECDSACertificateGenerator();
-  
-  try {
-    // 使用 P-256 曲线
-    generator.setCurve('P-256');
-    
-    // 1. 生成根 CA
-    const rootCA = await generator.generateRootCA({
-      C: 'CN',
-      ST: 'Beijing',
-      L: 'Beijing',
-      O: 'Example Corp',
-      OU: 'IT Department',
-      CN: 'Example Root CA'
-    });
-    
-    await generator.saveToFiles(rootCA, 'root-ca');
-    
-    // 2. 生成 CSR
-    const csrData = await generator.generateCSR({
-      C: 'CN',
-      ST: 'Beijing',
-      L: 'Beijing',
-      O: 'Example Corp',
-      OU: 'Web Services',
-      CN: 'api.example.com'
-    });
-    
-    // 3. 验证 CSR
-    const isValidCSR = await generator.verifyCSR(csrData.csr);
-    console.log('CSR 签名验证:', isValidCSR);
-    
-    // 4. 从 CSR 签发证书
-    const leafCert = await generator.signCSR(
-      csrData.csr,
-      rootCA.keyPair,
-      {
-        C: 'CN',
-        ST: 'Beijing',
-        L: 'Beijing',
-        O: 'Example Corp',
-        OU: 'IT Department',
-        CN: 'Example Root CA'
-      },
-      365,
-      {
-        subjectAltName: {
-          critical: false,
-          names: [
-            { type: 'dns', value: 'api.example.com' },
-            { type: 'dns', value: 'www.example.com' }
-          ]
+  /**
+   * 生成工厂配置证书链
+   */
+  async generateFactoryCertificateChain() {
+    try {
+      console.log('开始生成工厂配置证书链...');
+      
+      // 1. 生成根 CA
+      const rootCA = await this.generateRootCA({
+        C: 'xyz',
+        ST: 'wator',
+        L: 'otmc',
+        O: 'otmc',
+        OU: 'dts',
+        CN: 'Digital Twin Root CA for Factory Provisioning'
+      }, 10);
+      
+      // 2. 生成服务器证书
+      const serverCert = await this.generateServerCertificate(
+        {
+          C: 'xyz',
+          ST: 'wator',
+          L: 'otmc',
+          O: 'otmc',
+          OU: 'dts',
+          CN: 'Digital Twin Server Certificate for Factory Provisioning'
+        },
+        20, // 20天有效期
+        rootCA.keyPair,
+        {
+          C: 'xyz',
+          ST: 'wator',
+          L: 'otmc',
+          O: 'otmc',
+          OU: 'dts',
+          CN: 'Digital Twin Root CA for Factory Provisioning'
         }
-      }
-    );
-    
-    await writeFile('leaf-certificate.pem', leafCert);
-    
-    // 5. 验证证书
-    const isValidCert = await generator.verifyCertificate(
-      leafCert,
-      rootCA.publicKeyPEM
-    );
-    console.log('证书验证:', isValidCert);
-    
-  } catch (error) {
-    console.error('错误:', error.message);
-  } finally {
-    generator.clearSensitiveData();
+      );
+      
+      console.log('✓ 工厂配置证书链生成完成');
+      
+      return {
+        rootCA,
+        serverCert
+      };
+      
+    } catch (error) {
+      throw new Error(`生成工厂配置证书链时出错: ${error.message}`);
+    }
   }
 }
 
+
 // 导出类
 export { ECDSACertificateGenerator };
+

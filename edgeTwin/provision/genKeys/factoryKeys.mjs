@@ -24,7 +24,7 @@ const clientCAFilePath = join(secureDir, 'ssl', 'client.crt');
 // OU: 组织单位 (Organizational Unit)
 // CN: 通用名称 (Common Name)
 const rootCASubject = {
-  C: 'xyz',
+  C: 'UN',
   ST: 'wator',
   L: 'otmc',
   O: 'otmc',
@@ -34,7 +34,7 @@ const rootCASubject = {
 const validityYearsRootCA = 20;
 
 const serverCASubject = {
-  C: 'xyz',
+  C: 'UN',
   ST: 'wator',
   L: 'otmc',
   O: 'otmc',
@@ -44,7 +44,7 @@ const serverCASubject = {
 const validityYearsServer = 20;
 
 const clientCASubject = {
-  C: 'xyz',
+  C: 'UN',
   ST: 'wator',
   L: 'otmc',
   O: 'otmc',
@@ -63,14 +63,14 @@ const rootCACert = await createCertificate(rootCAFilePath, rootCASubject, validi
 
 
 
-const serverCAKeyPair = await createOrLoadKeys(privServerKeyFilePath, pubServerKeyFilePath);
-const serverCACert = await createCertificate(serverCAFilePath, serverCASubject, validityYearsServer,rootCAKeyPair,rootCACert,serverCAKeyPair);
+const serverKeyPair = await createOrLoadKeys(privServerKeyFilePath, pubServerKeyFilePath);
+const serverCACert = await createCertificate(serverCAFilePath, serverCASubject, validityYearsServer,rootCAKeyPair,rootCACert,serverKeyPair);
 
 // openssl x509 -in /secure/factory/ssl/server.crt -noout -text
 // openssl verify -CAfile /secure/factory/ssl/rootca.crt /secure/factory/ssl/server.crt
 
-const clientCAKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
-const clientCACert = await createCertificate(clientCAFilePath, clientCASubject, validityYearsClient,rootCAKeyPair,rootCACert,clientCAKeyPair);
+const clientKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
+const clientCACert = await createCertificate(clientCAFilePath, clientCASubject, validityYearsClient,rootCAKeyPair,rootCACert,clientKeyPair);
 
 // openssl x509 -in /secure/factory/ssl/client.crt -noout -text
 // openssl verify -CAfile /secure/factory/ssl/rootca.crt /secure/factory/ssl/client.crt

@@ -113,175 +113,45 @@ export default class OpenSSLCA {
       throw new Error(`Failed to generate ECDSA key pair: ${error.message}`);
     }
   }
+  /**
+   * 从私钥创建公钥
+   * @param {string} privateKey - 私钥文件路径
+   * @param {string} publicKey - 公钥文件路径
+   */
+  createPublicKeyFromPrivateKey(privateKey, publicKey) {
+    try {
+      console.log(`Creating public key from private key...`);
+      execSync(`openssl ec -in ${privateKey} -pubout -out ${publicKey}`);
+      console.log(`Public key created successfully: ${publicKey}`);
+      return publicKey;
+    } catch (error) {
+      throw new Error(`Failed to create public key from private key: ${error.message}`);
+    }
+  }
 
   /**
    * 创建OpenSSL配置文件
    */
-  createOpenSSLConfig() {
-    const rootConfig = `
-[ ca ]
-default_ca = CA_default
-
-[ CA_default ]
-dir = ${path.join(this.baseDir, 'rootCA')}
-certs = \$dir/certs
-crl_dir = \$dir/crl
-new_certs_dir = \$dir/newcerts
-database = \$dir/index.txt
-serial = \$dir/serial
-RANDFILE = \$dir/private/.rand
-
-private_key = \$dir/private/root_ca.key.pem
-certificate = \$dir/certs/root_ca.cert.pem
-
-policy = policy_strict
-
-[ policy_strict ]
-countryName = match
-stateOrProvinceName = match
-organizationName = match
-organizationalUnitName = optional
-commonName = supplied
-emailAddress = optional
-
-[ req ]
-default_bits = 4096
-default_md = sha256
-default_keyfile = ${path.join(this.baseDir, 'rootCA/private/root_ca.key.pem')}
-distinguished_name = req_distinguished_name
-x509_extensions = v3_ca
-string_mask = utf8only
-prompt = no
-
-[ req_distinguished_name ]
-countryName = CN
-stateOrProvinceName = Beijing
-localityName = Beijing
-organizationName = My Root CA
-organizationalUnitName = IT Department
-commonName = My Root CA
-emailAddress = ca@example.com
-
-[ v3_ca ]
-subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid:always,issuer
-basicConstraints = critical, CA:true
-keyUsage = critical, digitalSignature, cRLSign, keyCertSign
-
-[ v3_intermediate_ca ]
-subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid:always,issuer
-basicConstraints = critical, CA:true, pathlen:0
-keyUsage = critical, digitalSignature, cRLSign, keyCertSign
-
-[ server_cert ]
-basicConstraints = CA:FALSE
-nsCertType = server
-nsComment = "OpenSSL Generated Server Certificate"
-subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid,issuer:always
-keyUsage = critical, digitalSignature, keyEncipherment
-extendedKeyUsage = serverAuth
-
-[ client_cert ]
-basicConstraints = CA:FALSE
-nsCertType = client
-nsComment = "OpenSSL Generated Client Certificate"
-subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid,issuer:always
-keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
-extendedKeyUsage = clientAuth
-`;
-
-    const intermediateConfig = `
-[ ca ]
-default_ca = CA_intermediate
-
-[ CA_intermediate ]
-dir = ${path.join(this.baseDir, 'intermediateCA')}
-certs = \$dir/certs
-crl_dir = \$dir/crl
-new_certs_dir = \$dir/newcerts
-database = \$dir/index.txt
-serial = \$dir/serial
-RANDFILE = \$dir/private/.rand
-
-private_key = \$dir/private/intermediate_ca.key.pem
-certificate = \$dir/certs/intermediate_ca.cert.pem
-
-policy = policy_loose
-
-[ policy_loose ]
-countryName = optional
-stateOrProvinceName = optional
-localityName = optional
-organizationName = optional
-organizationalUnitName = optional
-commonName = supplied
-emailAddress = optional
-
-[ req ]
-default_bits = 4096
-default_md = sha256
-default_keyfile = ${path.join(this.baseDir, 'intermediateCA/private/intermediate_ca.key.pem')}
-distinguished_name = req_distinguished_name
-x509_extensions = v3_intermediate_ca
-string_mask = utf8only
-prompt = no
-
-[ req_distinguished_name ]
-countryName = CN
-stateOrProvinceName = Beijing
-localityName = Beijing
-organizationName = My Intermediate CA
-organizationalUnitName = IT Department
-commonName = My Intermediate CA
-emailAddress = intermediate@example.com
-
-[ server_cert ]
-basicConstraints = CA:FALSE
-nsCertType = server
-nsComment = "OpenSSL Generated Server Certificate"
-subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid,issuer:always
-keyUsage = critical, digitalSignature, keyEncipherment
-extendedKeyUsage = serverAuth
-
-[ client_cert ]
-basicConstraints = CA:FALSE
-nsCertType = client
-nsComment = "OpenSSL Generated Client Certificate"
-subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid,issuer:always
-keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
-extendedKeyUsage = clientAuth
-`;
-
-    fs.writeFileSync(this.opensslConfig.rootCaConfig, rootConfig);
-    fs.writeFileSync(this.opensslConfig.intermediateCaConfig, intermediateConfig);
-    
-    console.log('OpenSSL configuration files created successfully');
+  createOpenSSLConfig(subject) {
+    console.log(`OpenSSLCA::createOpenSSLConfig::subject:=<`, subject, '>');
+    const certConfig = `/C=${subject.C}/ST=${subject.ST}/L=${subject.L}/O=${subject.O}/OU=${subject.OU}/CN=${subject.CN}`;
+    return certConfig;
   }
 
   /**
    * 创建根CA
    */
-  createRootCA(curve = 'prime256v1') {
+  createRootCA(rootCert,subject,validityYears = 3650,rootKey) {
     try {
       console.log('Creating Root CA...');
       
-      this.createOpenSSLConfig();
-      
-      const rootKey = path.join(this.baseDir, 'rootCA/private/root_ca.key.pem');
-      const rootCert = path.join(this.baseDir, 'rootCA/certs/root_ca.cert.pem');
-      
-      // 生成根CA密钥对
-      this.generateECDSAKeyPair(curve, rootKey);
+      const certSubject = this.createOpenSSLConfig(subject);
+      console.log(`OpenSSLCA::createRootCA::certSubject:=<`, certSubject, '>');
       
       // 自签名根证书
-      execSync(`openssl req -new -x509 -days 3650 -key ${rootKey} ` +
+      execSync(`openssl req -new -x509 -days ${validityYears} -key ${rootKey} ` +
         `-sha256 -extensions v3_ca -out ${rootCert} ` +
-        `-config ${this.opensslConfig.rootCaConfig}`);
+        `-subj "${certSubject}"`);
       
       console.log(`Root CA created successfully:`);
       console.log(`  Certificate: ${rootCert}`);

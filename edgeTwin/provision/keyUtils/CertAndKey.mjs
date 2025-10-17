@@ -30,26 +30,15 @@ const createOrLoadKeys = async (privKeyFilePath, pubKeyFilePath) => {
 
   } else {
     console.log('密钥文件已存在，跳过生成');
-    const pemPrivateKey = readFileSync(privKeyFilePath, 'utf8');
-    console.log('factoryKeys::Global::pemPrivateKey:=<', pemPrivateKey, '>');
-    const privateKey = await keyGenerator.importPrivateKeyFromPEM(pemPrivateKey);
-    console.log('factoryKeys::Global::privateKey:=<', privateKey, '>');
-    retKeyPair.privateKey = privateKey;
+    retKeyPair.privateKey = privKeyFilePath;
   }
   if (!existsSync(pubKeyFilePath)) {
-    const keyPair = await keyGenerator.createPublicKeyFromPrivateKey(privateKey);
+    const keyPair = keyGenerator.createPublicKeyFromPrivateKey(privKeyFilePath,pubKeyFilePath);
     console.log('factoryKeys::Global::keyPair:=<', keyPair, '>');
-    // 保存公钥
-    const pemPublicKey = await keyGenerator.exportPublicKeyToPEM(keyPair.publicKey);
-    console.log('factoryKeys::Global::pemPublicKey:=<', pemPublicKey, '>');
-    writeFileSync(pubKeyFilePath, pemPublicKey);
     console.log('公钥已保存至:', pubKeyFilePath);
   } else {
     console.log('公钥文件已存在，跳过生成');
-    const pemPublicKey = readFileSync(pubKeyFilePath, 'utf8');
-    console.log('factoryKeys::Global::pemPublicKey:=<', pemPublicKey, '>');
-    retKeyPair.publicKey = await keyGenerator.importPublicKeyFromPEM(pemPublicKey);
-    console.log('factoryKeys::Global::publicKey:=<', retKeyPair.publicKey, '>');
+    retKeyPair.publicKey = pubKeyFilePath;
   }
   console.log('factoryKeys::Global::keyGenerator:=<', keyGenerator, '>');
   return retKeyPair;
@@ -68,9 +57,9 @@ const createCertificate = async (caFilePath, subject, validityYears,issuerKeyPai
     };
     
     if(subjectKeyPair === null && issuerCert === null){
-      cert = await keyGenerator.generateRootCA(subject, validityYears, issuerKeyPair,defaultSAN);
+      cert = keyGenerator.createRootCA(caFilePath,subject, validityYears,issuerKeyPair.privateKey,defaultSAN);
     } else {
-      cert = await keyGenerator.generateServerCertificate(subject, validityYears, issuerKeyPair,issuerCert,subjectKeyPair,defaultSAN);
+      cert = keyGenerator.createServerCertificate(caFilePath,subject, validityYears, issuerKeyPair.privateKey,issuerCert,subjectKeyPair.privateKey,defaultSAN);
     }
     console.log('factoryKeys::Global::cert:=<', cert, '>');
     // 确保证书目录存在

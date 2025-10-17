@@ -330,7 +330,7 @@ class ECDSACertificateGenerator {
   }
 
   /**
-   * 创建证书扩展
+   * 创建证书扩展（修复 SAN 编码问题）
    */
   createExtensions(extensionsConfig) {
     const extensions = [];
@@ -369,7 +369,7 @@ class ECDSACertificateGenerator {
             new asn1.Boolean({ value: extensionsConfig.keyUsage.critical || true }),
             new asn1.OctetString({
               valueHex: new asn1.BitString({
-                valueHex: new Uint8Array([keyUsageBits & 0xFF]),
+                valueHex: new Uint8Array([keyUsageBits]),
                 unusedBits: 0
               }).toBER()
             })
@@ -383,54 +383,61 @@ class ECDSACertificateGenerator {
       extensions.push(this.createExtendedKeyUsage(extensionsConfig.extendedKeyUsage));
     }
     
-    // 主题备用名称
+    // 主题备用名称 - 修复编码问题
     if (extensionsConfig.subjectAltName) {
-      const altNames = extensionsConfig.subjectAltName.names.map(name => {
-        if (name.type === 'dns') {
-          return new asn1.Constructed({
-            idBlock: {
-              tagClass: 2,
-              tagNumber: 2
-            },
-            value: [new asn1.Utf8String({ value: name.value })]
-          });
-        } else if (name.type === 'ip') {
-          return new asn1.Constructed({
-            idBlock: {
-              tagClass: 2,
-              tagNumber: 7
-            },
-            value: [new asn1.OctetString({ valueHex: this.ipToBuffer(name.value) })]
-          });
-        } else if (name.type === 'email') {
-          return new asn1.Constructed({
-            idBlock: {
-              tagClass: 2,
-              tagNumber: 1
-            },
-            value: [new asn1.IA5String({ value: name.value })]
-          });
-        }
-      }).filter(Boolean);
+      const names = extensionsConfig.subjectAltName.names || [];
       
-      extensions.push(
-        new asn1.Sequence({
-          value: [
-            new asn1.ObjectIdentifier({ value: '2.5.29.17' }),
-            new asn1.Boolean({ value: extensionsConfig.subjectAltName.critical || false }),
-            new asn1.OctetString({
-              valueHex: new asn1.Sequence({
-                value: altNames
-              }).toBER()
+      if (names.length > 0) {
+        const altNames = [];
+        
+        for (const name of names) {
+          if (!name || !name.type || !name.value) continue;
+          
+          try {
+            if (name.type === 'dns') {
+              // DNS 名称 - 使用正确的上下文特定标签
+              altNames.push(new asn1.Constructed({
+                idBlock: {
+                  tagClass: 2, // 上下文特定
+                  tagNumber: 2 // DNS 名称
+                },
+                value: [new asn1.IA5String({ value: name.value })]
+              }));
+            } else if (name.type === 'ip') {
+              // IP 地址 - 使用正确的上下文特定标签
+              altNames.push(new asn1.Constructed({
+                idBlock: {
+                  tagClass: 2, // 上下文特定
+                  tagNumber: 7 // IP 地址
+                },
+                value: [new asn1.OctetString({ valueHex: this.ipToBuffer(name.value) })]
+              }));
+            }
+          } catch (error) {
+            console.warn(`跳过无效的 SAN 条目 ${name.type}=${name.value}:`, error.message);
+          }
+        }
+        
+        if (altNames.length > 0) {
+          // 创建 SAN 扩展
+          const sanSequence = new asn1.Sequence({ value: altNames });
+          const sanBuffer = sanSequence.toBER();
+          
+          extensions.push(
+            new asn1.Sequence({
+              value: [
+                new asn1.ObjectIdentifier({ value: '2.5.29.17' }), // subjectAltName OID
+                new asn1.Boolean({ value: extensionsConfig.subjectAltName.critical || false }),
+                new asn1.OctetString({ valueHex: new Uint8Array(sanBuffer) })
+              ]
             })
-          ]
-        })
-      );
+          );
+        }
+      }
     }
     
     return new asn1.Sequence({ value: extensions });
   }
-
   /**
    * IP 地址转换为缓冲区
    */
@@ -613,7 +620,7 @@ class ECDSACertificateGenerator {
   /**
    * 生成根 CA 证书
    */
-  async generateRootCA(subject, validityYears = 10, keyPair = null) {
+  async generateRootCA(subject, validityYears = 10, keyPair = null, altNames = null) {
     try {
       if (!keyPair) {
         keyPair = await this.generateKeyPair();
@@ -635,7 +642,8 @@ class ECDSACertificateGenerator {
           keyUsage: {
             critical: true,
             usage: ['keyCertSign', 'cRLSign']
-          }
+          },
+          ...(altNames ? { subjectAltName: { critical: false, names: altNames } } : {})
         }
       });
 
@@ -653,13 +661,23 @@ class ECDSACertificateGenerator {
   }
 
   /**
-   * 生成服务器证书
+   * 生成服务器证书（修复版 - 包含 SAN 扩展）
    */
-  async generateServerCertificate(subject, validityDays = 365, issuerKeyPair, issuerSubject, subjectKeyPair = null) {
+  async generateServerCertificate(subject, validityDays = 365, issuerKeyPair, issuerSubject, subjectKeyPair = null, sanConfig = null) {
     try {
       if (!subjectKeyPair) {
         subjectKeyPair = await this.generateKeyPair();
       }
+      
+      // 默认的 SAN 配置
+      const defaultSAN = {
+        critical: false,
+        names: [
+          { type: 'dns', value: 'localhost' },
+          { type: 'ip', value: '127.0.0.1' },
+          { type: 'ip', value: '::1' }
+        ]
+      };
       
       console.log(`正在生成 ${this.curveName} 服务器证书...`);
       
@@ -681,7 +699,8 @@ class ECDSACertificateGenerator {
           extendedKeyUsage: {
             critical: true,
             usage: ['serverAuth', 'clientAuth']
-          }
+          },
+          subjectAltName: sanConfig || defaultSAN  // 添加 SAN 扩展
         }
       });
       
@@ -1280,4 +1299,3 @@ class ECDSACertificateGenerator {
 
 // 导出类
 export { ECDSACertificateGenerator };
-

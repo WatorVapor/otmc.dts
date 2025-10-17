@@ -1,17 +1,17 @@
-import {createOrLoadKeys,createCertificate} from '../keyUtils/Ed25519Key.mjs';
+import {createOrLoadKeys,createCertificate} from '../keyUtils/CertAndKey.mjs';
 
 import { join } from 'path';
 
 const secureDir = '/secure/factory/'
 
-const privRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.priv.key');
-const pubRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.pub.key');
+const privRootCAKeyFilePath = join(secureDir, 'keys', 'root.key.pem');
+const pubRootCAKeyFilePath = join(secureDir, 'keys', 'root.key_pub.pem');
 
-const privServerKeyFilePath = join(secureDir, 'keys', 'server.priv.key');
-const pubServerKeyFilePath = join(secureDir, 'keys', 'server.pub.key');
+const privServerKeyFilePath = join(secureDir, 'keys', 'server.key.pem');
+const pubServerKeyFilePath = join(secureDir, 'keys', 'server.key_pub.pem');
 
-const privClientKeyFilePath = join(secureDir, 'keys', 'client.priv.key');
-const pubClientKeyFilePath = join(secureDir, 'keys', 'client.pub.key');
+const privClientKeyFilePath = join(secureDir, 'keys', 'client.key.pem');
+const pubClientKeyFilePath = join(secureDir, 'keys', 'client.key_pub.pem');
 
 const rootCAFilePath = join(secureDir, 'ssl', 'rootca.crt');
 const serverCAFilePath = join(secureDir, 'ssl', 'server.crt');

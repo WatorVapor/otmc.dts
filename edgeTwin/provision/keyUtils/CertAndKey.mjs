@@ -1,12 +1,10 @@
 import { existsSync, writeFileSync,mkdirSync,readFileSync } from 'fs';
-//import {Ed25519CertificateGenerator} from './Ed25519Ca.mjs';
-import {ECDSACertificateGenerator} from './ECDSACa.mjs';
-//import {ECDSACertificateGenerator} from './ECDSACaForge.mjs';
+import OpenSSLCA from './ECDSAOpenSSLCa.mjs';
 
 import path from 'path';
-console.log('keyUtils::Global::ECDSACertificateGenerator:=<', ECDSACertificateGenerator, '>');
+console.log('keyUtils::Global::OpenSSLCA:=<', OpenSSLCA, '>');
 
-const keyGenerator = new ECDSACertificateGenerator();
+const keyGenerator = new OpenSSLCA();
 
 
 
@@ -18,8 +16,6 @@ const createOrLoadKeys = async (privKeyFilePath, pubKeyFilePath) => {
   // 检查密钥和证书文件是否已存在
   if (!existsSync(privKeyFilePath)) {
     console.log('未检测到密钥文件，开始生成密钥对');
-    const keypari = await keyGenerator.generateKeyPair();
-    console.log('factoryKeys::Global::keyPair:=<', keypari, '>');
     // 确保密钥目录存在
     const keyDir = path.dirname(privKeyFilePath);
     if (!existsSync(keyDir)) {
@@ -27,19 +23,11 @@ const createOrLoadKeys = async (privKeyFilePath, pubKeyFilePath) => {
       mkdirSync(keyDir, { recursive: true });
       console.log('密钥目录已创建:', keyDir);
     }
+    const keypari = keyGenerator.generateECDSAKeyPair(privKeyFilePath);
+    console.log('factoryKeys::Global::keyPair:=<', keypari, '>');
     retKeyPair.privateKey = keypari.privateKey;
     retKeyPair.publicKey = keypari.publicKey;
 
-    // 保存私钥
-    const pemPrivateKey = await keyGenerator.exportPrivateKeyToPEM(keypari.privateKey);
-    console.log('factoryKeys::Global::pemPrivateKey:=<', pemPrivateKey, '>');
-    writeFileSync(privKeyFilePath, pemPrivateKey);
-    console.log('私钥已保存至:', privKeyFilePath);
-    // 保存公钥
-    const pemPublicKey = await keyGenerator.exportPublicKeyToPEM(keypari.publicKey);
-    console.log('factoryKeys::Global::pemPublicKey:=<', pemPublicKey, '>');
-    writeFileSync(pubKeyFilePath, pemPublicKey);
-    console.log('公钥已保存至:', pubKeyFilePath);
   } else {
     console.log('密钥文件已存在，跳过生成');
     const pemPrivateKey = readFileSync(privKeyFilePath, 'utf8');

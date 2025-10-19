@@ -141,17 +141,20 @@ export default class OpenSSLCA {
   /**
    * 创建根CA
    */
-  createRootCA(rootCert,subject,validityYears = 3650,rootKey) {
+  createRootCA(rootCert,subject,validityYears = 10,rootKey) {
     try {
       console.log('Creating Root CA...');
       
       const certSubject = this.createOpenSSLConfig(subject);
       console.log(`OpenSSLCA::createRootCA::certSubject:=<`, certSubject, '>');
       
+      const sslCmd = `openssl req -new -x509 -days ${validityYears*365} -key ${rootKey} ` +
+        `-subj "${certSubject}" `+
+        `-sha256 -extensions v3_ca -out ${rootCert}`;
+      console.log(`OpenSSLCA::createRootCA::sslCmd:=<`, sslCmd, '>');
       // 自签名根证书
-      execSync(`openssl req -new -x509 -days ${validityYears} -key ${rootKey} ` +
-        `-sha256 -extensions v3_ca -out ${rootCert} ` +
-        `-subj "${certSubject}"`);
+      const result = execSync(sslCmd);
+      console.log(`OpenSSLCA::createRootCA::result:=<`, result.toString(), '>');
       
       console.log(`Root CA created successfully:`);
       console.log(`  Certificate: ${rootCert}`);
@@ -164,100 +167,45 @@ export default class OpenSSLCA {
   }
 
   /**
-   * 创建中间CA
+   * 创建服务器证书
    */
-  createIntermediateCA(curve = 'prime256v1') {
-    try {
-      console.log('Creating Intermediate CA...');
-      
-      const intermediateKey = path.join(this.baseDir, 'intermediateCA/private/intermediate_ca.key.pem');
-      const intermediateCSR = path.join(this.baseDir, 'intermediateCA/certs/intermediate_ca.csr.pem');
-      const intermediateCert = path.join(this.baseDir, 'intermediateCA/certs/intermediate_ca.cert.pem');
-      const rootKey = path.join(this.baseDir, 'rootCA/private/root_ca.key.pem');
-      const rootCert = path.join(this.baseDir, 'rootCA/certs/root_ca.cert.pem');
-      
-      // 检查根CA是否存在
-      if (!fs.existsSync(rootKey) || !fs.existsSync(rootCert)) {
-        throw new Error('Root CA not found. Please create Root CA first.');
-      }
-      
-      // 生成中间CA密钥对
-      this.generateECDSAKeyPair(curve, intermediateKey);
-      
-      // 生成中间CA的证书签名请求(CSR)
-      execSync(`openssl req -new -sha256 -key ${intermediateKey} ` +
-        `-out ${intermediateCSR} -config ${this.opensslConfig.intermediateCaConfig}`);
-      
-      // 使用根CA签名中间证书
-      execSync(`openssl ca -batch -config ${this.opensslConfig.rootCaConfig} ` +
-        `-extensions v3_intermediate_ca -days 1825 -notext -md sha256 ` +
-        `-in ${intermediateCSR} -out ${intermediateCert}`);
-      
-      // 创建证书链
-      const chainCert = path.join(this.baseDir, 'intermediateCA/certs/ca-chain.cert.pem');
-      const intermediateCertContent = fs.readFileSync(intermediateCert);
-      const rootCertContent = fs.readFileSync(rootCert);
-      fs.writeFileSync(chainCert, intermediateCertContent + rootCertContent);
-      
-      console.log(`Intermediate CA created successfully:`);
-      console.log(`  Certificate: ${intermediateCert}`);
-      console.log(`  Private Key: ${intermediateKey}`);
-      console.log(`  Certificate Chain: ${chainCert}`);
-      
-      return {
-        certificate: intermediateCert,
-        privateKey: intermediateKey,
-        chain: chainCert
-      };
-    } catch (error) {
-      throw new Error(`Failed to create Intermediate CA: ${error.message}`);
-    }
-  }
+  createServerCert(serverCert,subject, validityYears,serverKey,caKey,caCert) {
+    console.log(`OpenSSLCA::createServerCert::serverCert:=<`, serverCert, '>');
+    console.log(`OpenSSLCA::createServerCert::subject:=<`, subject, '>');
+    console.log(`OpenSSLCA::createServerCert::validityYears:=<`, validityYears, '>');
+    console.log(`OpenSSLCA::createServerCert::serverKey:=<`, serverKey, '>');
+    console.log(`OpenSSLCA::createServerCert::caKey:=<`, caKey, '>');
+    console.log(`OpenSSLCA::createServerCert::caCert:=<`, caCert, '>');
 
-  /**
-   * 生成服务器证书
-   */
-  generateServerCert(commonName, curve = 'prime256v1', san = null) {
-    try {
-      console.log(`Generating Server Certificate for: ${commonName}`);
+    try {      
+      const certSubject = this.createOpenSSLConfig(subject);
+      console.log(`OpenSSLCA::createServerCert::certSubject:=<`, certSubject, '>');
+
+      const serverCSR = serverCert.replace('.crt', '.csr.pem');
+      console.log(`OpenSSLCA::createServerCert::serverCSR:=<`, serverCSR, '>');
       
-      const serverKey = path.join(this.baseDir, `client-certs/${commonName}.key.pem`);
-      const serverCSR = path.join(this.baseDir, `client-certs/${commonName}.csr.pem`);
-      const serverCert = path.join(this.baseDir, `client-certs/${commonName}.cert.pem`);
-      const intermediateKey = path.join(this.baseDir, 'intermediateCA/private/intermediate_ca.key.pem');
-      const intermediateCert = path.join(this.baseDir, 'intermediateCA/certs/intermediate_ca.cert.pem');
-      
-      // 检查中间CA是否存在
-      if (!fs.existsSync(intermediateKey) || !fs.existsSync(intermediateCert)) {
-        throw new Error('Intermediate CA not found. Please create Intermediate CA first.');
-      }
-      
-      // 生成服务器密钥对
-      this.generateECDSAKeyPair(curve, serverKey);
-      
-      // 创建自定义配置文件（如果需要SAN）
-      let configArgs = '';
-      if (san) {
-        const sanConfig = this.createSANConfig(commonName, san);
-        configArgs = `-config ${sanConfig}`;
-      }
       
       // 生成CSR
-      execSync(`openssl req -new -sha256 -key ${serverKey} ` +
-        `-out ${serverCSR} ${configArgs} -subj "/CN=${commonName}"`);
+      let sslCmd = `openssl req -new -sha256 -key ${serverKey} ` +
+        `-out ${serverCSR} -subj "${certSubject}"`;
+      console.log(`OpenSSLCA::createServerCert::sslCmd:=<`, sslCmd, '>');
+      execSync(sslCmd);
       
-      // 使用中间CA签名服务器证书
-      execSync(`openssl ca -batch -config ${this.opensslConfig.intermediateCaConfig} ` +
-        `-extensions server_cert -days 375 -notext -md sha256 ` +
-        `-in ${serverCSR} -out ${serverCert}`);
+      // 使用CA签名服务器证书
+      sslCmd = `openssl x509 -req -CA ${caCert} -CAkey ${caKey} ` +
+        `-CAcreateserial ` +
+        `-days ${validityYears*365} -sha256 ` +
+        `-in ${serverCSR} -out ${serverCert}`;
+      console.log(`OpenSSLCA::createServerCert::sslCmd:=<`, sslCmd, '>');
+      execSync(sslCmd);
       
-      console.log(`Server certificate generated successfully:`);
+      console.log(`Server certificate created successfully:`);
       console.log(`  Certificate: ${serverCert}`);
       console.log(`  Private Key: ${serverKey}`);
       
       return { certificate: serverCert, privateKey: serverKey };
     } catch (error) {
-      throw new Error(`Failed to generate server certificate: ${error.message}`);
+      throw new Error(`Failed to create server certificate: ${error.message}`);
     }
   }
 

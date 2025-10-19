@@ -1,4 +1,4 @@
-import {createOrLoadKeys,createCertificate} from '../keyUtils/CertAndKey.mjs';
+import {createOrLoadKeys,createOrLoadCertificate} from '../keyUtils/CertAndKey.mjs';
 
 import { join } from 'path';
 
@@ -33,7 +33,7 @@ const rootCASubject = {
 };
 const validityYearsRootCA = 20;
 
-const serverCASubject = {
+const serverSubject = {
   C: 'UN',
   ST: 'wator',
   L: 'otmc',
@@ -43,7 +43,7 @@ const serverCASubject = {
 };
 const validityYearsServer = 20;
 
-const clientCASubject = {
+const clientSubject = {
   C: 'UN',
   ST: 'wator',
   L: 'otmc',
@@ -57,20 +57,25 @@ const validityYearsClient = 20;
 
 
 const rootCAKeyPair = await createOrLoadKeys(privRootCAKeyFilePath, pubRootCAKeyFilePath);
-const rootCACert = await createCertificate(rootCAFilePath, rootCASubject, validityYearsRootCA,rootCAKeyPair);
+console.log('::rootCAKeyPair:=<', rootCAKeyPair,'>');
+const rootCACert = await createOrLoadCertificate(rootCAFilePath, rootCASubject, validityYearsRootCA,rootCAKeyPair);
+console.log('::rootCACert:=<', rootCACert,'>');
 // openssl x509 -in /secure/factory/ssl/rootca.crt -noout -text
 // openssl verify -CAfile /secure/factory/ssl/rootca.crt /secure/factory/ssl/rootca.crt
 
 
 
 const serverKeyPair = await createOrLoadKeys(privServerKeyFilePath, pubServerKeyFilePath);
-const serverCACert = await createCertificate(serverCAFilePath, serverCASubject, validityYearsServer,rootCAKeyPair,rootCACert,serverKeyPair);
+console.log('::serverKeyPair:=<', serverKeyPair,'>');
+const serverCert = await createOrLoadCertificate(serverCAFilePath, serverSubject, validityYearsServer,serverKeyPair,rootCACert,rootCAKeyPair);
+console.log('::serverCert:=<', serverCert,'>');
 
 // openssl x509 -in /secure/factory/ssl/server.crt -noout -text
 // openssl verify -CAfile /secure/factory/ssl/rootca.crt /secure/factory/ssl/server.crt
 
 const clientKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
-const clientCACert = await createCertificate(clientCAFilePath, clientCASubject, validityYearsClient,rootCAKeyPair,rootCACert,clientKeyPair);
-
+console.log('::clientKeyPair:=<', clientKeyPair,'>');
+const clientCert = await createOrLoadCertificate(clientCAFilePath, clientSubject, validityYearsClient,clientKeyPair,rootCACert,rootCAKeyPair);
+console.log('::clientCert:=<', clientCert,'>');
 // openssl x509 -in /secure/factory/ssl/client.crt -noout -text
 // openssl verify -CAfile /secure/factory/ssl/rootca.crt /secure/factory/ssl/client.crt

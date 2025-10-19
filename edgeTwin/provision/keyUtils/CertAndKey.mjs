@@ -43,7 +43,7 @@ const createOrLoadKeys = async (privKeyFilePath, pubKeyFilePath) => {
   console.log('factoryKeys::Global::keyGenerator:=<', keyGenerator, '>');
   return retKeyPair;
 }
-const createCertificate = async (caFilePath, subject, validityYears,issuerKeyPair,issuerCert = null,subjectKeyPair = null) => {
+const createOrLoadCertificate = async (caFilePath, subject, validityYears,subjectKeyPair,issuerCert = null,issuerKeyPair = null) => {
   if (!existsSync(caFilePath)) {
     console.log('未检测到证书文件，开始生成证书');
     let cert = false;
@@ -55,13 +55,7 @@ const createCertificate = async (caFilePath, subject, validityYears,issuerKeyPai
         { type: 'ip', value: '::1' }
       ]
     };
-    
-    if(subjectKeyPair === null && issuerCert === null){
-      cert = keyGenerator.createRootCA(caFilePath,subject, validityYears,issuerKeyPair.privateKey,defaultSAN);
-    } else {
-      cert = keyGenerator.createServerCertificate(caFilePath,subject, validityYears, issuerKeyPair.privateKey,issuerCert,subjectKeyPair.privateKey,defaultSAN);
-    }
-    console.log('factoryKeys::Global::cert:=<', cert, '>');
+
     // 确保证书目录存在
     const certDir = path.dirname(caFilePath);
     if (!existsSync(certDir)) {
@@ -69,9 +63,13 @@ const createCertificate = async (caFilePath, subject, validityYears,issuerKeyPai
       mkdirSync(certDir, { recursive: true });
       console.log('证书目录已创建:', certDir);
     }
-    // 保存证书
-    writeFileSync(caFilePath, cert.certificate);
-    console.log('证书已保存至:', caFilePath);
+    
+    if(issuerKeyPair === null && issuerCert === null){
+      cert = keyGenerator.createRootCA(caFilePath,subject, validityYears,subjectKeyPair.privateKey,defaultSAN);
+    } else {
+      cert = keyGenerator.createServerCert(caFilePath,subject,validityYears,subjectKeyPair.privateKey,issuerKeyPair.privateKey,issuerCert,defaultSAN);
+    }
+    console.log('factoryKeys::Global::cert:=<', cert, '>');
     return cert.certificate;
   } else {
     console.log('证书文件已存在，跳过生成');
@@ -79,11 +77,9 @@ const createCertificate = async (caFilePath, subject, validityYears,issuerKeyPai
   }
 }
 
-const createCSR = async (csrFilePath, subject, validityYears,subjectKeyPair) => {
+const createOrLoadCSR = async (csrFilePath, subject, validityYears,subjectKeyPair) => {
   if (!existsSync(csrFilePath)) {
     console.log('未检测到CSR文件，开始生成CSR');
-    const csr = await keyGenerator.generateCSR(subject, validityYears,subjectKeyPair);
-    console.log('factoryKeys::Global::csr:=<', csr, '>');
     // 确保证书目录存在
     const csrDir = path.dirname(csrFilePath);
     if (!existsSync(csrDir)) {
@@ -91,8 +87,8 @@ const createCSR = async (csrFilePath, subject, validityYears,subjectKeyPair) => 
       mkdirSync(csrDir, { recursive: true });
       console.log('CSR目录已创建:', csrDir);
     }
-    // 保存CSR
-    writeFileSync(csrFilePath, csr.csr);
+    const csr = await keyGenerator.generateCSR(subject, validityYears,subjectKeyPair);
+    console.log('factoryKeys::Global::csr:=<', csr, '>');
     console.log('CSR已保存至:', csrFilePath);
     return csr;
   } else {
@@ -101,4 +97,4 @@ const createCSR = async (csrFilePath, subject, validityYears,subjectKeyPair) => 
   }
 }
 
-export { createOrLoadKeys,createCertificate,createCSR };
+export { createOrLoadKeys,createOrLoadCertificate,createOrLoadCSR };

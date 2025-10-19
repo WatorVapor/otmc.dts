@@ -1,9 +1,9 @@
-import {createOrLoadKeys,createCSR} from '../keyUtils/Ed25519Key.mjs';
+import {createOrLoadKeys,createOrLoadCSR} from '../keyUtils/CertAndKey.mjs';
 import { join } from 'path';
 
 const secureDir = '/secure/cloud/'
-const privClientKeyFilePath = join(secureDir, 'keys', 'client.priv.key');
-const pubClientKeyFilePath = join(secureDir, 'keys', 'client.pub.key');
+const privClientKeyFilePath = join(secureDir, 'keys', 'client.key.pem');
+const pubClientKeyFilePath = join(secureDir, 'keys', 'client.key_pub.pem');
 
 // C: 国家代码 (Country)
 // ST: 州或省 (State)
@@ -11,19 +11,21 @@ const pubClientKeyFilePath = join(secureDir, 'keys', 'client.pub.key');
 // O: 组织 (Organization)
 // OU: 组织单位 (Organizational Unit)
 // CN: 通用名称 (Common Name)
-const clientCASubject = {
-  C: 'xyz',
+const clientSubject = {
+  C: 'UN',
   ST: 'wator',
   L: 'otmc',
   O: 'otmc',
   OU: 'dts',
   CN: 'Digital Twin Client Certificate for Cloud Connection'
 };
-const validityYearsClientCA = 20;
+const validityYearsClient = 20;
 
 // Certificate Signing Request
 const clientCSRFilePath = join(secureDir, 'ssl', 'client.csr');
 
-const clientCAKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
+const clientKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
+console.log('::clientKeyPair:=<', clientKeyPair,'>');
 
-const clientCSR = await createCSR(clientCSRFilePath, clientCASubject, validityYearsClientCA,clientCAKeyPair);
+const clientCSR = await createOrLoadCSR(clientCSRFilePath, clientSubject, validityYearsClient,clientKeyPair);
+console.log('::clientCSR:=<', clientCSR,'>');

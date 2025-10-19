@@ -1,17 +1,17 @@
-import {createOrLoadKeys,createCertificate} from '../keyUtils/Ed25519Key.mjs';
+import {createOrLoadKeys,createOrLoadCertificate} from '../keyUtils/CertAndKey.mjs';
 
 import { join } from 'path';
 
 const secureDir = '/secure/buddy/'
 
-const privRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.priv.key');
-const pubRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.pub.key');
+const privRootCAKeyFilePath = join(secureDir, 'keys', 'root.key.pem');
+const pubRootCAKeyFilePath = join(secureDir, 'keys', 'rootca.key_pub.pem');
 
-const privServerKeyFilePath = join(secureDir, 'keys', 'server.priv.key');
-const pubServerKeyFilePath = join(secureDir, 'keys', 'server.pub.key');
+const privServerKeyFilePath = join(secureDir, 'keys', 'server.key.pem');
+const pubServerKeyFilePath = join(secureDir, 'keys', 'server.key_pub.pem');
 
-const privClientKeyFilePath = join(secureDir, 'keys', 'client.priv.key');
-const pubClientKeyFilePath = join(secureDir, 'keys', 'client.pub.key');
+const privClientKeyFilePath = join(secureDir, 'keys', 'client.key.pem');
+const pubClientKeyFilePath = join(secureDir, 'keys', 'client.key_pub.pem');
 
 const rootCAFilePath = join(secureDir, 'ssl', 'rootca.crt');
 const serverCAFilePath = join(secureDir, 'ssl', 'server.crt');
@@ -25,7 +25,7 @@ const clientCAFilePath = join(secureDir, 'ssl', 'client.crt');
 // OU: 组织单位 (Organizational Unit)
 // CN: 通用名称 (Common Name)
 const rootCASubject = {
-  C: 'xyz',
+  C: 'UN',
   ST: 'wator',
   L: 'otmc',
   O: 'otmc',
@@ -35,7 +35,7 @@ const rootCASubject = {
 const validityYearsRootCA = 20;
 
 const serverCASubject = {
-  C: 'xyz',
+  C: 'UN',
   ST: 'wator',
   L: 'otmc',
   O: 'otmc',
@@ -45,7 +45,7 @@ const serverCASubject = {
 const validityYearsServer = 20;
 
 const clientCASubject = {
-  C: 'xyz',
+  C: 'UN',
   ST: 'wator',
   L: 'otmc',
   O: 'otmc',
@@ -58,20 +58,26 @@ const validityYearsClient = 20;
 
 
 const rootCAKeyPair = await createOrLoadKeys(privRootCAKeyFilePath, pubRootCAKeyFilePath);
-const rootCACert = await createCertificate(rootCAFilePath, rootCASubject, validityYearsRootCA,rootCAKeyPair);
+console.log('::rootCAKeyPair:=<', rootCAKeyPair,'>');
+const rootCACert = await createOrLoadCertificate(rootCAFilePath, rootCASubject, validityYearsRootCA,rootCAKeyPair);
+console.log('::rootCACert:=<', rootCACert,'>');
 // openssl x509 -in /secure/buddy/ssl/rootca.crt -noout -text
 // openssl verify -CAfile /secure/buddy/ssl/rootca.crt /secure/buddy/ssl/rootca.crt
 
 
 
-const serverCAKeyPair = await createOrLoadKeys(privServerKeyFilePath, pubServerKeyFilePath);
-const serverCACert = await createCertificate(serverCAFilePath, serverCASubject, validityYearsServer,rootCAKeyPair,rootCACert,serverCAKeyPair);
+const serverKeyPair = await createOrLoadKeys(privServerKeyFilePath, pubServerKeyFilePath);
+console.log('::serverKeyPair:=<', serverKeyPair,'>');
+const serverCert = await createOrLoadCertificate(serverCAFilePath, serverCASubject, validityYearsServer,serverKeyPair,rootCACert,rootCAKeyPair);
+console.log('::serverCert:=<', serverCert,'>');
 
 // openssl x509 -in /secure/buddy/ssl/server.crt -noout -text
 // openssl verify -CAfile /secure/buddy/ssl/rootca.crt /secure/buddy/ssl/server.crt
 
-const clientCAKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
-const clientCACert = await createCertificate(clientCAFilePath, clientCASubject, validityYearsClient,rootCAKeyPair,rootCACert,clientCAKeyPair);
+const clientKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
+console.log('::clientKeyPair:=<', clientKeyPair,'>');
+const clientCert = await createOrLoadCertificate(clientCAFilePath, clientCASubject, validityYearsClient,clientKeyPair,rootCACert,rootCAKeyPair);
+console.log('::clientCert:=<', clientCert,'>');
 
 // openssl x509 -in /secure/buddy/ssl/client.crt -noout -text
-// openssl verify -CAfile /secure/buddy/ssl/rootca.crt /secure/buddy/ssl/client-sample.crt
+// openssl verify -CAfile /secure/buddy/ssl/rootca.crt /secure/buddy/ssl/client.crt

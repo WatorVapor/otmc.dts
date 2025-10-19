@@ -215,6 +215,35 @@ export default class OpenSSLCA {
   }
 
   /**
+   * 创建服务器CSR
+   */
+  createServerCSR(serverCSR,subject, validityYears,serverKey) {
+    if(this.trace) {
+      console.log(`OpenSSLCA::createServerCSR::serverCSR:=<`, serverCSR, '>');
+      console.log(`OpenSSLCA::createServerCSR::subject:=<`, subject, '>');
+      console.log(`OpenSSLCA::createServerCSR::validityYears:=<`, validityYears, '>');
+      console.log(`OpenSSLCA::createServerCSR::serverKey:=<`, serverKey, '>');
+    }
+
+    try {      
+      const certSubject = this.createOpenSSLConfig(subject);
+      console.log(`OpenSSLCA::createServerCert::certSubject:=<`, certSubject, '>');     
+      
+      // 生成CSR
+      let sslCmd = `openssl req -new -sha256 -key ${serverKey} ` +
+        `-out ${serverCSR} -subj "${certSubject}"`;
+      console.log(`OpenSSLCA::createServerCert::sslCmd:=<`, sslCmd, '>');
+      execSync(sslCmd);
+      
+      
+      return { csr: serverCSR, privateKey: serverKey };
+    } catch (error) {
+      throw new Error(`Failed to create server certificate: ${error.message}`);
+    }
+  }
+
+
+  /**
    * 创建SAN配置
    */
   createSANConfig(commonName, san) {

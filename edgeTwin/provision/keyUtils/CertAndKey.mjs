@@ -87,7 +87,7 @@ const createOrLoadCSR = async (csrFilePath, subject, validityYears,subjectKeyPai
       mkdirSync(csrDir, { recursive: true });
       console.log('CSR目录已创建:', csrDir);
     }
-    const csr = await keyGenerator.generateCSR(subject, validityYears,subjectKeyPair);
+    const csr = await keyGenerator.createServerCSR(csrFilePath,subject, validityYears,subjectKeyPair.privateKey);
     console.log('factoryKeys::Global::csr:=<', csr, '>');
     console.log('CSR已保存至:', csrFilePath);
     return csr;

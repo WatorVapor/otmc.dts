@@ -2,6 +2,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { TBSRequest } from 'pkijs';
 import { fileURLToPath } from 'url';
 
 // 在 ES6 模块中获取 __dirname 的等价物
@@ -10,6 +11,8 @@ const __dirname = path.dirname(__filename);
 
 export default class OpenSSLCA {
   constructor(baseDir = './pki') {
+    this.trace = false;
+    this.debug = true;
     this.baseDir = baseDir;
     this.opensslConfig = {
       rootCaConfig: path.join(this.baseDir, 'root_CA.cnf'),
@@ -170,12 +173,14 @@ export default class OpenSSLCA {
    * 创建服务器证书
    */
   createServerCert(serverCert,subject, validityYears,serverKey,caKey,caCert) {
-    console.log(`OpenSSLCA::createServerCert::serverCert:=<`, serverCert, '>');
-    console.log(`OpenSSLCA::createServerCert::subject:=<`, subject, '>');
-    console.log(`OpenSSLCA::createServerCert::validityYears:=<`, validityYears, '>');
-    console.log(`OpenSSLCA::createServerCert::serverKey:=<`, serverKey, '>');
-    console.log(`OpenSSLCA::createServerCert::caKey:=<`, caKey, '>');
-    console.log(`OpenSSLCA::createServerCert::caCert:=<`, caCert, '>');
+    if(this.trace) {
+      console.log(`OpenSSLCA::createServerCert::serverCert:=<`, serverCert, '>');
+      console.log(`OpenSSLCA::createServerCert::subject:=<`, subject, '>');
+      console.log(`OpenSSLCA::createServerCert::validityYears:=<`, validityYears, '>');
+      console.log(`OpenSSLCA::createServerCert::serverKey:=<`, serverKey, '>');
+      console.log(`OpenSSLCA::createServerCert::caKey:=<`, caKey, '>');
+      console.log(`OpenSSLCA::createServerCert::caCert:=<`, caCert, '>');
+    }
 
     try {      
       const certSubject = this.createOpenSSLConfig(subject);

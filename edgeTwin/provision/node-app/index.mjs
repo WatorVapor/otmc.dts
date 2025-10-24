@@ -4,6 +4,7 @@ import { unlink } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import express from 'express';
+import { issueClientCertFactory } from './factoryAuth.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,14 +26,14 @@ app.use(express.json());
 // 定义 POST /provision/add/client/cert 路由
 app.post('/provision/add/client/cert', (req, res) => {
   try {
-    const data = req.body;
-    // 这里简单返回收到的数据，实际业务可在此处理证书逻辑
-    res.status(200).json({ success: true, received: data });
+    issueClientCertFactory(req,res);
+    // 读取原始 body 作为纯文本
   } catch (err) {
     res.status(400).send('Invalid JSON\n');
   }
 });
 
+/*
 app.get('/provision/add/client/cert', (req, res) => {
   try {
     const data = req.body;
@@ -42,6 +43,7 @@ app.get('/provision/add/client/cert', (req, res) => {
     res.status(400).send('Invalid JSON\n');
   }
 });
+*/
 
 // 404 处理
 app.use((req, res) => {

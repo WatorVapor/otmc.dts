@@ -244,6 +244,39 @@ export default class OpenSSLCA {
 
 
   /**
+   * 创建服务器证书
+   */
+  createCert4CSR(csrPem,outCert, validityYears,caKey,caCert) {
+    if(this.trace) {
+      console.log(`OpenSSLCA::createCert4CSR::csrPem:=<`, csrPem, '>');
+      console.log(`OpenSSLCA::createCert4CSR::outCert:=<`, outCert, '>'); 
+      console.log(`OpenSSLCA::createCert4CSR::validityYears:=<`, validityYears, '>');
+      console.log(`OpenSSLCA::createCert4CSR::caKey:=<`, caKey, '>');
+      console.log(`OpenSSLCA::createCert4CSR::caCert:=<`, caCert, '>');
+    }
+
+    try {      
+     
+      // 使用CA签名服务器证书
+      sslCmd = `openssl x509 -req -CA ${caCert} -CAkey ${caKey} ` +
+        `-CAcreateserial ` +
+        `-days ${validityYears*365} -sha256 ` +
+        `-in ${serverCSR} -out ${serverCert}`;
+      console.log(`OpenSSLCA::createCert4CSR::sslCmd:=<`, sslCmd, '>');
+      execSync(sslCmd);
+      
+      console.log(`Certificate created successfully:`);
+      console.log(`  Certificate: ${serverCert}`);
+      console.log(`  Private Key: ${serverKey}`);
+      
+      return { certificate: outCert, privateKey: caKey };
+    } catch (error) {
+      throw new Error(`Failed to create certificate: ${error.message}`);
+    }
+  }
+
+
+  /**
    * 创建SAN配置
    */
   createSANConfig(commonName, san) {

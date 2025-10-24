@@ -137,4 +137,4 @@ node_modules
 core
 *.pem
 *.cert
-
+pki/

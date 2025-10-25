@@ -22,8 +22,13 @@ const issueClientCertFactory = (req,res) => {
 const issueCSRFactory = (csrPem,res) => {
     console.log('issueCSRFactory::csrPem:=<', csrPem, '>');
     console.log('issueCSRFactory::rootCAKeyPair:=<', rootCAKeyPair,'>');
-    const outCert = signCSR(csrPem,validityYearsClient,rootCAKeyPair,rootCAFilePath);
-    res.status(200).send('Client Certificate Issued\n');
+    const outCert = signCSR(csrPem,validityYearsClient,rootCAKeyPair.privateKey,rootCAFilePath);
+    console.log('issueCSRFactory::outCert:=<', outCert, '>');
+    const response = {
+        certificate: outCert.certificate,
+        result: 'success'
+    };
+    res.status(200).send(JSON.stringify(response));
 }
 
 const privRootCAKeyFilePath = join(secureDir, 'keys', 'root.key.pem');

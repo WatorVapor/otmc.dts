@@ -246,10 +246,9 @@ export default class OpenSSLCA {
   /**
    * 创建服务器证书
    */
-  createCert4CSR(csrPem,outCert, validityYears,caKey,caCert) {
+  createCert4CSR(csrPem, validityYears,caKey,caCert) {
     if(this.trace) {
       console.log(`OpenSSLCA::createCert4CSR::csrPem:=<`, csrPem, '>');
-      console.log(`OpenSSLCA::createCert4CSR::outCert:=<`, outCert, '>'); 
       console.log(`OpenSSLCA::createCert4CSR::validityYears:=<`, validityYears, '>');
       console.log(`OpenSSLCA::createCert4CSR::caKey:=<`, caKey, '>');
       console.log(`OpenSSLCA::createCert4CSR::caCert:=<`, caCert, '>');
@@ -257,19 +256,37 @@ export default class OpenSSLCA {
 
     try {      
      
-      // 使用CA签名服务器证书
-      sslCmd = `openssl x509 -req -CA ${caCert} -CAkey ${caKey} ` +
-        `-CAcreateserial ` +
-        `-days ${validityYears*365} -sha256 ` +
-        `-in ${serverCSR} -out ${serverCert}`;
-      console.log(`OpenSSLCA::createCert4CSR::sslCmd:=<`, sslCmd, '>');
-      execSync(sslCmd);
-      
-      console.log(`Certificate created successfully:`);
-      console.log(`  Certificate: ${serverCert}`);
-      console.log(`  Private Key: ${serverKey}`);
-      
-      return { certificate: outCert, privateKey: caKey };
+      let csrPemNL = csrPem.replace('-----BEGIN CERTIFICATE REQUEST-----', '-----BEGIN CERTIFICATE REQUEST-----\n');
+      csrPemNL = csrPemNL.replace('-----END CERTIFICATE REQUEST-----', '\n-----END CERTIFICATE REQUEST-----');
+      // 将CSR内容写入临时文件
+      const tempCsrPath = path.join(this.baseDir, 'client-certs', `temp_${Date.now()}.csr`);
+      fs.writeFileSync(tempCsrPath, csrPemNL);
+
+      // 使用内部临时文件生成证书
+      const tempCertPath = path.join(this.baseDir, 'client-certs', `temp_cert_${Date.now()}.pem`);
+      try {
+        // 使用CA签名证书
+        const sslCmd = `openssl x509 -req -CA ${caCert} -CAkey ${caKey} ` +
+          `-CAcreateserial ` +
+          `-days ${validityYears * 365} -sha256 ` +
+          `-in ${tempCsrPath} -out ${tempCertPath}`;
+        console.log(`OpenSSLCA::createCert4CSR::sslCmd:=<`, sslCmd, '>');
+        execSync(sslCmd);
+
+        // 读取生成的证书内容
+        const certPem = fs.readFileSync(tempCertPath, 'utf8');
+        console.log(`Certificate created successfully, returning PEM content`);
+
+        return { certificate: certPem, privateKey: caKey };
+      } finally {
+        // 删除临时文件
+        if (fs.existsSync(tempCsrPath)) {
+          fs.unlinkSync(tempCsrPath);
+        }
+        if (fs.existsSync(tempCertPath)) {
+          fs.unlinkSync(tempCertPath);
+        }
+      }
     } catch (error) {
       throw new Error(`Failed to create certificate: ${error.message}`);
     }

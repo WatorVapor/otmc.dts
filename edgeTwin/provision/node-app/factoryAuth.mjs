@@ -28,7 +28,7 @@ const issueCSRFactory = (csrPem,res) => {
         certificate: outCert.certificate,
         result: 'success'
     };
-    res.status(200).send(JSON.stringify(response));
+    res.status(200).send(outCert.certificate);
 }
 
 const privRootCAKeyFilePath = join(secureDir, 'keys', 'root.key.pem');

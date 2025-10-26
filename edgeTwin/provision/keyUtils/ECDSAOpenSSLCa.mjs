@@ -256,8 +256,9 @@ export default class OpenSSLCA {
 
     try {      
      
-      let csrPemNL = csrPem.replace('-----BEGIN CERTIFICATE REQUEST-----', '-----BEGIN CERTIFICATE REQUEST-----\n');
-      csrPemNL = csrPemNL.replace('-----END CERTIFICATE REQUEST-----', '\n-----END CERTIFICATE REQUEST-----');
+      //let csrPemNL = csrPem.replace('-----BEGIN CERTIFICATE REQUEST-----', '-----BEGIN CERTIFICATE REQUEST-----\n');
+      //csrPemNL = csrPemNL.replace('-----END CERTIFICATE REQUEST-----', '\n-----END CERTIFICATE REQUEST-----');
+      const csrPemNL = csrPem;
       // 将CSR内容写入临时文件
       const tempCsrPath = path.join(this.baseDir, 'client-certs', `temp_${Date.now()}.csr`);
       fs.writeFileSync(tempCsrPath, csrPemNL);

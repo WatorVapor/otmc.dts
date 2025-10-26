@@ -87,7 +87,15 @@ const createOrLoadCSR = async (csrFilePath, subject, validityYears,subjectKeyPai
       mkdirSync(csrDir, { recursive: true });
       console.log('CSR目录已创建:', csrDir);
     }
-    const csr = await keyGenerator.createServerCSR(csrFilePath,subject, validityYears,subjectKeyPair.privateKey);
+    const defaultSAN = {
+      critical: false,
+      names: [
+        { type: 'dns', value: 'localhost' },
+        { type: 'ip', value: '127.0.0.1' },
+        { type: 'ip', value: '::1' }
+      ]
+    };
+    const csr = await keyGenerator.createServerCSR(csrFilePath,subject, validityYears,subjectKeyPair.privateKey, defaultSAN);
     console.log('factoryKeys::Global::csr:=<', csr, '>');
     console.log('CSR已保存至:', csrFilePath);
     return csr;

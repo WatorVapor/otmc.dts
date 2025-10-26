@@ -13,7 +13,7 @@ curl -X POST \
     --cert /opt/secure/dts/provision/factory/ssl/client.crt \
     --key /opt/secure/dts/provision/factory/keys/client.key.pem \
     --cacert /opt/secure/dts/provision/factory/ssl/rootca.crt \
-    -O ssl/client.crt \
+    -o ssl/client.crt \
     https://127.0.0.1:9443/api/v1/provision/add/client/cert
 
 # 检查健康状态
@@ -21,4 +21,4 @@ curl -X GET \
     --cert ssl/client.crt \
     --key ssl/client.key.pem \
     --cacert /opt/secure/dts/provision/factory/ssl/rootca.crt \
-    https://127.0.0.1:9443/api/v1/provision/health
+    https://127.0.0.1:9443/api/v1/provision/health | jq .

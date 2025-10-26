@@ -62,6 +62,8 @@ const rootCACert = await createOrLoadCertificate(rootCAFilePath, rootCASubject, 
 console.log('::rootCACert:=<', rootCACert,'>');
 // openssl x509 -in /secure/factory/ssl/rootca.crt -noout -text
 // openssl verify -CAfile /secure/factory/ssl/rootca.crt /secure/factory/ssl/rootca.crt
+// openssl x509 -in /secure/factory/ssl/rootca.crt -text -noout | grep -A 2 "Subject Alternative Name"
+// openssl x509 -in /opt/secure/dts/provision/factory/ssl/rootca.crt -text -noout | grep -A 2 "Subject Alternative Name"
 
 
 
@@ -72,6 +74,10 @@ console.log('::serverCert:=<', serverCert,'>');
 
 // openssl x509 -in /secure/factory/ssl/server.crt -noout -text
 // openssl verify -CAfile /secure/factory/ssl/rootca.crt /secure/factory/ssl/server.crt
+// openssl x509 -in /secure/factory/ssl/server.crt -text -noout | grep -A 2 "Subject Alternative Name"
+// openssl x509 -in /opt/secure/dts/provision/factory/ssl/server.crt -text -noout | grep -A 2 "Subject Alternative Name"
+
+
 
 const clientKeyPair = await createOrLoadKeys(privClientKeyFilePath, pubClientKeyFilePath);
 console.log('::clientKeyPair:=<', clientKeyPair,'>');
@@ -79,3 +85,5 @@ const clientCert = await createOrLoadCertificate(clientCAFilePath, clientSubject
 console.log('::clientCert:=<', clientCert,'>');
 // openssl x509 -in /secure/factory/ssl/client.crt -noout -text
 // openssl verify -CAfile /secure/factory/ssl/rootca.crt /secure/factory/ssl/client.crt
+// openssl x509 -in /secure/factory/ssl/client.crt -text -noout | grep -A 2 "Subject Alternative Name"
+// openssl x509 -in /opt/secure/dts/provision/factory/ssl/client.crt -text -noout | grep -A 2 "Subject Alternative Name"

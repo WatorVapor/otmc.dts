@@ -1,8 +1,10 @@
-import { existsSync, writeFileSync,mkdirSync,readFileSync } from 'fs';
+import { existsSync, mkdirSync,readFileSync } from 'fs';
+import path from 'path';
+import os from 'os';
+import net from 'net';
 import OpenSSLCA from './ECDSAOpenSSLCa.mjs';
 
-import path from 'path';
-console.log('keyUtils::Global::OpenSSLCA:=<', OpenSSLCA, '>');
+//console.log('keyUtils::Global::OpenSSLCA:=<', OpenSSLCA, '>');
 
 const keyGenerator = new OpenSSLCA();
 
@@ -47,15 +49,6 @@ const createOrLoadCertificate = async (caFilePath, subject, validityYears,subjec
   if (!existsSync(caFilePath)) {
     console.log('未检测到证书文件，开始生成证书');
     let cert = false;
-    const defaultSAN = {
-      critical: false,
-      names: [
-        { type: 'dns', value: 'localhost' },
-        { type: 'ip', value: '127.0.0.1' },
-        { type: 'ip', value: '::1' }
-      ]
-    };
-
     // 确保证书目录存在
     const certDir = path.dirname(caFilePath);
     if (!existsSync(certDir)) {
@@ -87,14 +80,6 @@ const createOrLoadCSR = async (csrFilePath, subject, validityYears,subjectKeyPai
       mkdirSync(csrDir, { recursive: true });
       console.log('CSR目录已创建:', csrDir);
     }
-    const defaultSAN = {
-      critical: false,
-      names: [
-        { type: 'dns', value: 'localhost' },
-        { type: 'ip', value: '127.0.0.1' },
-        { type: 'ip', value: '::1' }
-      ]
-    };
     const csr = await keyGenerator.createServerCSR(csrFilePath,subject, validityYears,subjectKeyPair.privateKey, defaultSAN);
     console.log('factoryKeys::Global::csr:=<', csr, '>');
     console.log('CSR已保存至:', csrFilePath);
@@ -106,3 +91,58 @@ const createOrLoadCSR = async (csrFilePath, subject, validityYears,subjectKeyPai
 }
 
 export { createOrLoadKeys,createOrLoadCertificate,createOrLoadCSR };
+
+
+
+// @description: 判断IP是否为私有IP
+// @param {string} ip - IP地址
+// @return {boolean} - 是否为私有IP
+const isPrivateIP = (ip) =>{
+  if (!net.isIP(ip)) return false;
+  // IPv4 判断
+  if (net.isIPv4(ip)) {
+    return (
+      ip.startsWith('10.') || // 10.0.0.0/8
+      ip.startsWith('192.168.') || // 192.168.0.0/16
+      ip.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./) || // 172.16.0.0 – 172.31.255.255
+      ip === '127.0.0.1' // loopback
+    );
+  }
+
+  // IPv6 判断
+  if (net.isIPv6(ip)) {
+    return (
+      ip === '::1' || // loopback
+      ip.startsWith('fc') || // fc00::/7 unique local address
+      ip.startsWith('fd') || // fd00::/8 unique local address
+      ip.startsWith('fe80') // link-local address
+    );
+  }
+  return false;
+}
+
+const getDefaultAltNames = () => {
+  const networkInterfaces = os.networkInterfaces();
+  const names = [
+    { type: 'DNS', value: 'localhost' }
+  ];
+
+  for (const interfaceName in networkInterfaces) {
+    const interfaceAddresses = networkInterfaces[interfaceName];
+    for (const addressInfo of interfaceAddresses) {
+      console.log('addressInfo:=<', addressInfo, '>');
+      if(isPrivateIP(addressInfo.address)){
+        names.push({ type: 'IP', value: addressInfo.address });
+      }
+    }
+  }
+  //console.log('names:=<', names, '>');
+  return names;
+};
+
+const defaultSAN = {
+  critical: false,
+  names: getDefaultAltNames()
+};
+
+

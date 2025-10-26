@@ -144,15 +144,17 @@ export default class OpenSSLCA {
   /**
    * 创建根CA
    */
-  createRootCA(rootCert,subject,validityYears = 10,rootKey) {
+  createRootCA(rootCert,subject,validityYears = 10,rootKey,sanConfig = null) {
     try {
       console.log('Creating Root CA...');
       
       const certSubject = this.createOpenSSLConfig(subject);
       console.log(`OpenSSLCA::createRootCA::certSubject:=<`, certSubject, '>');
       
+      const sanExt = this.createSANExtension(sanConfig);
       const sslCmd = `openssl req -new -x509 -days ${validityYears*365} -key ${rootKey} ` +
         `-subj "${certSubject}" `+
+        `-addext "subjectAltName = ${sanExt}" `+
         `-sha256 -extensions v3_ca -out ${rootCert}`;
       console.log(`OpenSSLCA::createRootCA::sslCmd:=<`, sslCmd, '>');
       // 自签名根证书
@@ -172,27 +174,32 @@ export default class OpenSSLCA {
   /**
    * 创建服务器证书
    */
-  createServerCert(serverCert,subject, validityYears,serverKey,caKey,caCert) {
+  createServerCert(serverCert,subject, validityYears,serverKey,caKey,caCert,sanConfig) {
     if(this.trace) {
       console.log(`OpenSSLCA::createServerCert::serverCert:=<`, serverCert, '>');
       console.log(`OpenSSLCA::createServerCert::subject:=<`, subject, '>');
       console.log(`OpenSSLCA::createServerCert::validityYears:=<`, validityYears, '>');
       console.log(`OpenSSLCA::createServerCert::serverKey:=<`, serverKey, '>');
       console.log(`OpenSSLCA::createServerCert::caKey:=<`, caKey, '>');
+      console.log(`OpenSSLCA::createServerCert::sanConfig:=<`, sanConfig, '>');
       console.log(`OpenSSLCA::createServerCert::caCert:=<`, caCert, '>');
     }
 
     try {      
       const certSubject = this.createOpenSSLConfig(subject);
       console.log(`OpenSSLCA::createServerCert::certSubject:=<`, certSubject, '>');
-
+      
       const serverCSR = serverCert.replace('.crt', '.csr.pem');
       console.log(`OpenSSLCA::createServerCert::serverCSR:=<`, serverCSR, '>');
       
+      const sanExt = this.createSANExtension(sanConfig);
       
       // 生成CSR
       let sslCmd = `openssl req -new -sha256 -key ${serverKey} ` +
-        `-out ${serverCSR} -subj "${certSubject}"`;
+        ` -subj "${certSubject}"` +
+        ` -addext "subjectAltName = ${sanExt}"` +
+        ` -out ${serverCSR}`;
+
       console.log(`OpenSSLCA::createServerCert::sslCmd:=<`, sslCmd, '>');
       execSync(sslCmd);
       
@@ -200,6 +207,7 @@ export default class OpenSSLCA {
       sslCmd = `openssl x509 -req -CA ${caCert} -CAkey ${caKey} ` +
         `-CAcreateserial ` +
         `-days ${validityYears*365} -sha256 ` +
+        `-copy_extensions copy ` +  
         `-in ${serverCSR} -out ${serverCert}`;
       console.log(`OpenSSLCA::createServerCert::sslCmd:=<`, sslCmd, '>');
       execSync(sslCmd);
@@ -217,28 +225,33 @@ export default class OpenSSLCA {
   /**
    * 创建服务器CSR
    */
-  createServerCSR(serverCSR,subject, validityYears,serverKey) {
+  createServerCSR(serverCSR,subject, validityYears,serverKey,sanConfig) {
     if(this.trace) {
       console.log(`OpenSSLCA::createServerCSR::serverCSR:=<`, serverCSR, '>');
       console.log(`OpenSSLCA::createServerCSR::subject:=<`, subject, '>');
       console.log(`OpenSSLCA::createServerCSR::validityYears:=<`, validityYears, '>');
       console.log(`OpenSSLCA::createServerCSR::serverKey:=<`, serverKey, '>');
+      console.log(`OpenSSLCA::createServerCSR::sanConfig:=<`, sanConfig, '>');
     }
 
     try {      
       const certSubject = this.createOpenSSLConfig(subject);
-      console.log(`OpenSSLCA::createServerCert::certSubject:=<`, certSubject, '>');     
+      console.log(`OpenSSLCA::createServerCSR::certSubject:=<`, certSubject, '>');     
+      
+      const sanExt = this.createSANExtension(sanConfig);
       
       // 生成CSR
       let sslCmd = `openssl req -new -sha256 -key ${serverKey} ` +
-        `-out ${serverCSR} -subj "${certSubject}"`;
-      console.log(`OpenSSLCA::createServerCert::sslCmd:=<`, sslCmd, '>');
+        ` -subj "${certSubject}"` +
+        ` -addext "subjectAltName = ${sanExt}"` +
+        ` -out ${serverCSR}`;
+      console.log(`OpenSSLCA::createServerCSR::sslCmd:=<`, sslCmd, '>');
       execSync(sslCmd);
       
       
       return { csr: serverCSR, privateKey: serverKey };
     } catch (error) {
-      throw new Error(`Failed to create server certificate: ${error.message}`);
+      throw new Error(`Failed to create server CSR: ${error.message}`);
     }
   }
 
@@ -270,6 +283,7 @@ export default class OpenSSLCA {
         const sslCmd = `openssl x509 -req -CA ${caCert} -CAkey ${caKey} ` +
           `-CAcreateserial ` +
           `-days ${validityYears * 365} -sha256 ` +
+          `-copy_extensions copy ` +  
           `-in ${tempCsrPath} -out ${tempCertPath}`;
         console.log(`OpenSSLCA::createCert4CSR::sslCmd:=<`, sslCmd, '>');
         execSync(sslCmd);
@@ -374,5 +388,16 @@ ${san.map((entry, index) => `DNS.${index + 1} = ${entry}`).join('\n')}
     } catch (error) {
       console.warn('Warning: Could not clean up temporary files:', error.message);
     }
+  }
+  createSANExtension(sanConfig) {
+    let sanExt = '';
+    for (const entryIndex of Object.keys(sanConfig.names)) {
+      const entry = sanConfig.names[entryIndex];
+      sanExt += `${entry.type}:${entry.value}`;
+      if(entryIndex < sanConfig.names.length - 1){
+        sanExt += ',';
+      }
+    }
+    return sanExt;
   }
 }

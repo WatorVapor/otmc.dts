@@ -1,4 +1,4 @@
-curl -v -k -X POST \
+curl -X POST \
     -H "Content-Type: text/plain" \
     --data-binary @ssl/client.csr \
     --cacert /opt/secure/dts/provision/factory/ssl/rootca.crt \

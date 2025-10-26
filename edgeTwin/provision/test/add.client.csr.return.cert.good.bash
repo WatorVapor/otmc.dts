@@ -1,4 +1,4 @@
-curl -v -X POST \
+curl -X POST \
     -H "Content-Type: text/plain" \
     --data-binary @ssl/client.csr \
     --cert /opt/secure/dts/provision/factory/ssl/client.crt \

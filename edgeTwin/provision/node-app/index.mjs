@@ -33,6 +33,9 @@ app.post('/provision/add/client/cert', (req, res) => {
   }
 });
 
+app.get('/provision/health', (req, res) => {
+    res.status(200).json({ success: true, health: 'Good' });
+});
 /*
 app.get('/provision/add/client/cert', (req, res) => {
   try {

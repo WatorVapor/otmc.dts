@@ -21,4 +21,4 @@ curl -X GET \
     --cert ssl/client.crt \
     --key ssl/client.key.pem \
     --cacert /opt/secure/dts/provision/factory/ssl/rootca.crt \
-    https://127.0.0.1:9443/api/v1/provision/health | jq .
+    https://127.0.0.1:9443/api/v1/health | jq .

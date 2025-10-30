@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import express from 'express';
 import { issueClientCertFactory } from './factoryAuth.mjs';
+import { issueClientCertCluster } from './clusterAuth.mjs';
+import { issueClientCertBuddy } from './buddyAuth.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -33,20 +35,30 @@ app.post('/provision/add/client/cert', (req, res) => {
   }
 });
 
-app.get('/provision/health', (req, res) => {
-    res.status(200).json({ success: true, health: 'Good' });
-});
-/*
-app.get('/provision/add/client/cert', (req, res) => {
+// 定义 POST /cluster/add/client/cert 路由
+app.post('/cluster/add/client/cert', (req, res) => {
   try {
-    const data = req.body;
-    // 这里简单返回收到的数据，实际业务可在此处理证书逻辑
-    res.status(200).json({ success: true, received: data });
+    issueClientCertCluster(req,res);
+    // 读取原始 body 作为纯文本
   } catch (err) {
     res.status(400).send('Invalid JSON\n');
   }
 });
-*/
+
+// 定义 POST /buddy/add/client/cert 路由
+app.post('/buddy/add/client/cert', (req, res) => {
+  try {
+    issueClientCertBuddy(req,res);
+    // 读取原始 body 作为纯文本
+  } catch (err) {
+    res.status(400).send('Invalid JSON\n');
+  }
+});
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ success: true, health: 'Good' });
+});
+
 
 // 404 处理
 app.use((req, res) => {

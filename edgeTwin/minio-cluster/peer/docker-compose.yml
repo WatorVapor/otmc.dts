@@ -14,12 +14,3 @@ services:
       - ./data:/data
     command: server /data --console-address ":9001"
     restart: unless-stopped
-  coredns:
-    image: coredns/coredns:1.12.4
-    container_name: coredns
-    ports:
-      - "53:53/udp"
-      - "53:53/tcp"
-    volumes:
-      - ./Corefile:/etc/coredns/Corefile
-    restart: unless-stopped

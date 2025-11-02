@@ -1,5 +1,5 @@
 services:
-  minio:
+  rustfs:
     image: rustfs/rustfs:1.0.0-alpha.66
     container_name: rustfs
     ports:
@@ -10,7 +10,8 @@ services:
       RUSTFS_ACCESS_KEY: rustfs-dts
       RUSTFS_SECRET_KEY: dGhpc0lzQVRlc3QxMg
     volumes:
-      - ./data:/data
+      - /opt/dts/storage/rustfs:/data
+      - ./logs:/logs
     command: server /data --console-address ":9001"
     restart: unless-stopped
   coredns:
@@ -20,5 +21,5 @@ services:
       - "53:53/udp"
       - "53:53/tcp"
     volumes:
-      - ./Corefile:/etc/coredns/Corefile
+      - ./dns/Corefile:/etc/coredns/Corefile
     restart: unless-stopped

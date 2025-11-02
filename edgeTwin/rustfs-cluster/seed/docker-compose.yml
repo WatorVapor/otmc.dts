@@ -6,13 +6,13 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      RUSTFS_CONSOLE_ENABLE: true
-      RUSTFS_ACCESS_KEY: rustfs-dts
-      RUSTFS_SECRET_KEY: dGhpc0lzQVRlc3QxMg
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_VOLUMES=/data/rustfs0
+      - RUSTFS_ACCESS_KEY=rustfs-dts
+      - RUSTFS_SECRET_KEY=dGhpc0lzQVRlc3QxMg
     volumes:
       - /opt/dts/storage/rustfs:/data
       - ./logs:/logs
-    command: server /data --console-address ":9001"
     restart: unless-stopped
   coredns:
     image: coredns/coredns:1.12.4

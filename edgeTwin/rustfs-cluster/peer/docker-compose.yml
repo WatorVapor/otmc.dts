@@ -6,10 +6,10 @@ services:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
     environment:
-      RUSTFS_CONSOLE_ENABLE: true
-      RUSTFS_ACCESS_KEY: rustfs-dts
-      RUSTFS_SECRET_KEY: dGhpc0lzQVRlc3QxMg
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_VOLUMES=/data/rustfs0
+      - RUSTFS_ACCESS_KEY=rustfs-dts
+      - RUSTFS_SECRET_KEY=dGhpc0lzQVRlc3QxMg
     volumes:
       - ./data:/data
-    command: server /data --console-address ":9001"
     restart: unless-stopped

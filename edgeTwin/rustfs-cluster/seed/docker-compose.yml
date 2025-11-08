@@ -35,7 +35,7 @@ services:
       - /opt/secure/dts/provision/buddy/ssl/rootca.crt:/etc/nginx/ssl/rootca.crt:ro
       - /dev/shm/:/dev/shm/
     ports:
-      - '9000:9000'
+      - '9002:443'
   coredns:
     image: coredns/coredns:1.12.4
     container_name: coredns

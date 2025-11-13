@@ -1,16 +1,16 @@
 services:
-  rustfs:
-    image: rustfs/rustfs:1.0.0-alpha.68
-    container_name: rustfs
+  minio:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z-cpuv1
+    container_name: minio
     environment:
-      - RUSTFS_CONSOLE_ENABLE=true
-      - RUSTFS_VOLUMES=/data/rustfs0
-      - RUSTFS_ACCESS_KEY="rustfs-dts"
-      - RUSTFS_SECRET_KEY="dGhpc0lzQVRlc3QxMg"
+      - MINIO_CONSOLE_ENABLE=true
+      - MINIO_VOLUMES=/data/minio0
+      - MINIO_ACCESS_KEY="minio-dts"
+      - MINIO_SECRET_KEY="dGhpc0lzQVRlc3QxMg"
       - RUST_LOG="info"
       - TZ=Asia/Tokyo
     volumes:
-      - /opt/dts/storage/rustfs:/data
+      - /opt/dts/storage/minio:/data
       - ./logs:/logs
     restart: unless-stopped
   nginx-out:

@@ -1,21 +1,19 @@
 services:
-  minio:
+  dts-minio:
     image: minio/minio:RELEASE.2025-07-23T15-54-02Z-cpuv1
-    container_name: minio
+    container_name: dts-minio
+    command: server /data/minio0 --console-address ":9001"
     environment:
-      - MINIO_CONSOLE_ENABLE=true
-      - MINIO_VOLUMES=/data/minio0
-      - MINIO_ACCESS_KEY="minio-dts"
-      - MINIO_SECRET_KEY="dGhpc0lzQVRlc3QxMg"
-      - RUST_LOG="info"
-      - TZ=Asia/Tokyo
+      MINIO_ROOT_USER: dts-minioadmin
+      MINIO_ROOT_PASSWORD: R8u#cV1p!Zq4Lm@H
+      TZ: Asia/Tokyo
     volumes:
       - /opt/dts/storage/minio:/data
       - ./logs:/logs
     restart: unless-stopped
-  nginx-out:
+  dts-nginx-out:
     image: nginx:stable-alpine
-    container_name: nginx-out
+    container_name: dts-nginx-out
     restart: unless-stopped
     volumes:
       - ./nginx-out/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -26,9 +24,9 @@ services:
     ports:
       - '9000:9000'
       - '9001:9001'
-  coredns:
+  dts-coredns:
     image: coredns/coredns:1.12.4
-    container_name: coredns
+    container_name: dts-coredns
     ports:
       - "53:53/udp"
       - "53:53/tcp"

@@ -1,19 +1,18 @@
 services:
-  rustfs:
+  dts-rustfs:
     image: rustfs/rustfs:1.0.0-alpha.68
     container_name: rustfs
     environment:
       - RUSTFS_CONSOLE_ENABLE=true
       - RUSTFS_VOLUMES=/data/rustfs0
-      - RUSTFS_ACCESS_KEY="rustfs-dts"
-      - RUSTFS_SECRET_KEY="dGhpc0lzQVRlc3QxMg"
-      - RUST_LOG="info"
+      - RUSTFS_ACCESS_KEY=MuME8eYX8QIOzomD
+      - RUSTFS_SECRET_KEY=H5SpMKkvkyv1hnTO
       - TZ=Asia/Tokyo
     volumes:
       - /opt/dts/storage/rustfs:/data
       - ./logs:/logs
     restart: unless-stopped
-  nginx-out:
+  dts-nginx-out:
     image: nginx:stable-alpine
     container_name: nginx-out
     restart: unless-stopped
@@ -26,7 +25,7 @@ services:
     ports:
       - '9000:9000'
       - '9001:9001'
-  coredns:
+  dts-coredns:
     image: coredns/coredns:1.12.4
     container_name: coredns
     ports:

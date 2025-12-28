@@ -5,5 +5,9 @@ docker exec -it dts-mc /bin/bash -c "mc admin policy attach dts-minio readwrite 
 docker exec -it dts-mc /bin/bash -c "mc admin user info dts-minio dts-builtin"
 docker exec -it dts-mc /bin/bash -c "mc admin accesskey create dts-minio dts-builtin" > dts-builtin.access.txt
 
+docker exec -it dts-mc /bin/bash -c "mc admin user add dts-minio dts-builtin-sync tZpNRpGFCQygmbfe"
+docker exec -it dts-mc /bin/bash -c "mc admin policy attach dts-minio readwrite --user=dts-builtin-sync"
+docker exec -it dts-mc /bin/bash -c "mc admin user info dts-minio dts-builtin-sync"
+docker exec -it dts-mc /bin/bash -c "mc admin accesskey create dts-minio dts-builtin-sync" > dts-builtin-sync.access.txt
 
 

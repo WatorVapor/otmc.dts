@@ -1,6 +1,6 @@
 services:
   dts-rustfs:
-    image: rustfs/rustfs:1.0.0-alpha.68
+    image: rustfs/rustfs:1.0.0-alpha.80
     container_name: rustfs
     environment:
       - RUSTFS_CONSOLE_ENABLE=true

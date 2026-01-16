@@ -1,0 +1,27 @@
+services:
+  dts-cloud-rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.80
+    container_name: rustfs
+    environment:
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_VOLUMES=/data/rustfs0
+      - RUSTFS_ACCESS_KEY=xlAE6lX2emNt5PGg
+      - RUSTFS_SECRET_KEY=j452p3mHCI5Zo7zC
+      - TZ=Asia/Tokyo
+    volumes:
+      - /opt/dts/storage/rustfs:/data
+      - ./logs:/logs
+    restart: unless-stopped
+  dts-cloud-nginx-out:
+    image: nginx:stable-alpine
+    container_name: nginx-out
+    restart: unless-stopped
+    volumes:
+      - ./nginx-out/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /opt/secure/dts/provision/buddy/keys/server.key.pem:/etc/nginx/ssl/server.key:ro
+      - /opt/secure/dts/provision/buddy/ssl/server.crt:/etc/nginx/ssl/server.crt:ro
+      - /opt/secure/dts/provision/buddy/ssl/rootca.crt:/etc/nginx/ssl/rootca.crt:ro
+      - /dev/shm/:/dev/shm/
+    ports:
+      - '9000:9000'
+      - '9001:9001'

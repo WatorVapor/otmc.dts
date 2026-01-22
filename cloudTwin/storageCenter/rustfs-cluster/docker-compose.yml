@@ -1,7 +1,7 @@
 services:
   dts-cloud-rustfs:
     image: rustfs/rustfs:1.0.0-alpha.80
-    container_name: rustfs
+    container_name: dts-cloud-rustfs
     environment:
       - RUSTFS_CONSOLE_ENABLE=true
       - RUSTFS_VOLUMES=/data/rustfs
@@ -12,9 +12,9 @@ services:
       - ./storage:/data
       - ./logs:/logs
     restart: unless-stopped
-  dts-cloud-nginx-out:
+  dts-cloud-nginx:
     image: nginx:stable-alpine
-    container_name: nginx-out
+    container_name: dts-cloud-nginx
     restart: unless-stopped
     volumes:
       - ./nginx-out/nginx.conf:/etc/nginx/nginx.conf:ro

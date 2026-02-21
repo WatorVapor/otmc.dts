@@ -31,9 +31,9 @@ sha256sum /opt/otmc/secret/spire-agent/certs/x509pop-agent-leaf.pub \
 openssl req -new -nodes \
   -key /opt/otmc/secret/spire-agent/certs/x509pop-agent-leaf.key \
   -subj "/C=CN/ST=Tokyo/L=Tokyo/O=Wator/CN=SPIRE X509POP Agent Leaf" \
-  -addext "keyUsage = critical, digitalSignature" \
+  -addext "keyUsage=critical,keyCertSign,cRLSign" \
   -addext "extendedKeyUsage = clientAuth" \
-  -out /opt/otmc/secret/spire-agent/certs/x509pop-agent-leaf.csr  
+  -out /opt/otmc/secret/spire-agent/certs/x509pop-agent-leaf.csr
 ```
 
 ### Features
@@ -42,9 +42,27 @@ openssl req -new -nodes \
 - SpireAgent 还负责将节点的 SPIFFE ID 和 X.509 证书注册到 Spire Server。
 
 
+
+### check help
+```bash
+docker exec dts-edge-spire-agent /opt/spire/bin/spire-agent healthcheck --help
+```
+### SVID
+```bash
+docker exec dts-edge-spire-agent /opt/spire/bin/spire-agent api fetch -socketPath /run/spire/sockets/agent.sock 
+```
+### fetch key certificate
+```bash
+docker exec dts-edge-spire-agent /opt/spire/bin/spire-agent api fetch x509  -socketPath /run/spire/sockets/agent.sock -write /run/spire/svids
+```
+
+
+
 ### Cloud Storage access memo by spireAgent certificate and key
  ```bash
  curl -vvv -X GET \
     https://dts-cloud-edge.wator.xyz 
  ```
  
+
+

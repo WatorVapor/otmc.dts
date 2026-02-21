@@ -5,8 +5,10 @@ services:
     environment:
       SPIRE_SOCKET_PATH: /run/spire/sockets/agent.sock
     volumes:
-      - ./spireAgent/conf/agent.conf:/run/spire/config/agent.conf:ro
+      #- ./spireAgent/conf/agent.conf:/run/spire/config/agent.conf:ro
       - ./spireAgent/conf/agent.conf:/opt/spire/conf/agent/agent.conf:ro
       - /opt/otmc/spiffe/data:/run/spire/data
+      - /opt/otmc/spiffe/svids:/run/spire/svids
       - /opt/otmc/spiffe/certs:/run/spire/certs
     restart: unless-stopped
+    network_mode : "host"

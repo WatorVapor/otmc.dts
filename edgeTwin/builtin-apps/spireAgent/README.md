@@ -63,6 +63,22 @@ docker exec dts-edge-spire-agent /opt/spire/bin/spire-agent api fetch x509  -soc
  curl -vvv -X GET \
     https://dts-cloud-edge.wator.xyz 
  ```
- 
+
+ ```bash
+ curl -vvv -X GET \
+    --cert /opt/otmc/spiffe/svids/svid.0.pem \
+    --key /opt/otmc/spiffe/svids/svid.0.key \
+     --user "${ACCESS_KEY}:${SECRET_KEY}" \
+     --aws-sigv4 "aws:amz:ap-northeast-1:s3" \
+    https://dts-cloud-edge.wator.xyz/ 
+ ```
+
+ ```bash
+ curl -vvv -X GET \
+     --user "${ACCESS_KEY}:${SECRET_KEY}" \
+     --aws-sigv4 "aws:amz:ap-northeast-1:s3" \
+    https://dts-cloud-edge.wator.xyz/ 
+ ```
+
 
 

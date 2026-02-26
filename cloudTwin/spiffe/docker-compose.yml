@@ -2,6 +2,8 @@ services:
   spire-server:
     image: ghcr.io/spiffe/spire-server:1.14.1
     container_name: dts-cloudTwin-spire-server
+    environment:
+      - TZ=Asia/Tokyo
     restart: unless-stopped
     ports:
       - "38081:8081"

@@ -1,7 +1,7 @@
 services:
   dts-rustfs:
     image: rustfs/rustfs:1.0.0-alpha.80
-    container_name: rustfs
+    container_name: dts-edge-rustfs
     environment:
       - RUSTFS_CONSOLE_ENABLE=true
       - RUSTFS_VOLUMES=/data/rustfs0
@@ -12,9 +12,18 @@ services:
       - /opt/dts/storage/rustfs:/data
       - ./logs:/logs
     restart: unless-stopped
+  dts-rc:
+    image: rustfs/rc:v0.1.7
+    container_name: dts-edge-rc
+    environment:
+      - TZ=Asia/Tokyo
+    volumes:
+      - ./logs:/logs
+    entrypoint: /bin/sh -c "tail -f /dev/null"
+    restart: unless-stopped
   dts-nginx-out:
     image: nginx:stable-alpine
-    container_name: nginx-out
+    container_name: dts-edge-nginx-out
     restart: unless-stopped
     environment:
       - TZ=Asia/Tokyo
@@ -29,7 +38,7 @@ services:
       - '9001:9001'
   dts-coredns:
     image: coredns/coredns:1.12.4
-    container_name: coredns
+    container_name: dts-edge-coredns
     ports:
       - "53:53/udp"
       - "53:53/tcp"

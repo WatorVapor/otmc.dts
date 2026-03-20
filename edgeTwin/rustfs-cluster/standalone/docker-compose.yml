@@ -4,6 +4,7 @@ services:
     container_name: dts-edge-rustfs
     env_file:
       - .env_file
+      - .env_file_app_setup
     volumes:
       - /opt/dts/storage/rustfs:/data
       - ./logs:/logs
@@ -11,8 +12,9 @@ services:
   dts-rc:
     image: rustfs/rc:v0.1.7
     container_name: dts-edge-rc
-    environment:
-      - TZ=Asia/Tokyo
+    env_file:
+      - .env_file
+      - .env_file_app_setup
     volumes:
       - ./logs:/logs
     entrypoint: /bin/sh -c "tail -f /dev/null"

@@ -2,12 +2,8 @@ services:
   dts-rustfs:
     image: rustfs/rustfs:1.0.0-alpha.80
     container_name: dts-edge-rustfs
-    environment:
-      - RUSTFS_CONSOLE_ENABLE=true
-      - RUSTFS_VOLUMES=/data/rustfs0
-      - RUSTFS_ACCESS_KEY=MuME8eYX8QIOzomD
-      - RUSTFS_SECRET_KEY=H5SpMKkvkyv1hnTO
-      - TZ=Asia/Tokyo
+    env_file:
+      - .env_file
     volumes:
       - /opt/dts/storage/rustfs:/data
       - ./logs:/logs

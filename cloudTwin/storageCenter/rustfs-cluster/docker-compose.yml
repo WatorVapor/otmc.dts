@@ -2,12 +2,8 @@ services:
   dts-cloud-rustfs:
     image: rustfs/rustfs:1.0.0-alpha.80
     container_name: dts-cloud-rustfs
-    environment:
-      - RUSTFS_CONSOLE_ENABLE=true
-      - RUSTFS_VOLUMES=/data/rustfs
-      - RUSTFS_ACCESS_KEY=xlAE6lX2emNt5PGg
-      - RUSTFS_SECRET_KEY=j452p3mHCI5Zo7zC
-      - TZ=Asia/Tokyo
+    env_file:
+      - .env_file
     volumes:
       - ./storage:/data
       - ./logs:/logs

@@ -12,7 +12,7 @@ services:
       - /opt/otmc/spiffe/certs:/run/spire/certs
       - /opt/otmc/spiffe/sockets:/run/spire/sockets
     restart: unless-stopped
-    network_mode : "host"
+    #network_mode : "host"
   spiffeHelper:
     image: ghcr.io/spiffe/spiffe-helper:0.11.0
     container_name: dts-edge-spiffe-helper
@@ -25,3 +25,5 @@ services:
       - /opt/otmc/spiffe/sockets:/run/spire/sockets
     restart: unless-stopped
     command: ["-config", "/etc/helper-config.conf"]
+    depends_on:
+      - spireAgent

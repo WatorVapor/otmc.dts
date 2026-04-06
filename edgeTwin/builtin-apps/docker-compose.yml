@@ -1,29 +1,16 @@
 services:
-  spireAgent:
-    image: ghcr.io/spiffe/spire-agent:1.14.4
-    container_name: dts-edge-spire-agent
+  spire-agenth-helper:
+    build: ./spiffeImage
+    container_name: dts-edge-spire-agent-helper
     environment:
       - SPIRE_SOCKET_PATH=/run/spire/sockets/agent.sock
       - TZ=Asia/Tokyo
     volumes:
       - ./spireAgent/conf/agent.conf:/opt/spire/conf/agent/agent.conf:ro
+      - ./spiffeHelper/conf/helper-config.conf:/etc/helper-config.conf:ro
       - /opt/otmc/spiffe/data:/run/spire/data
       - /opt/otmc/spiffe/svids:/run/spire/svids
       - /opt/otmc/spiffe/certs:/run/spire/certs
       - /opt/otmc/spiffe/sockets:/run/spire/sockets
     restart: unless-stopped
-    #network_mode : "host"
-  spiffeHelper:
-    image: ghcr.io/spiffe/spiffe-helper:0.11.0
-    container_name: dts-edge-spiffe-helper
-    environment:
-      - SPIRE_SOCKET_PATH=/run/spire/sockets/agent.sock
-      - TZ=Asia/Tokyo
-    volumes:
-      - ./spiffeHelper/conf/helper-config.conf:/etc/helper-config.conf:ro
-      - /opt/otmc/spiffe/certs:/run/spire/certs
-      - /opt/otmc/spiffe/sockets:/run/spire/sockets
-    restart: unless-stopped
-    command: ["-config", "/etc/helper-config.conf"]
-    depends_on:
-      - spireAgent
+  

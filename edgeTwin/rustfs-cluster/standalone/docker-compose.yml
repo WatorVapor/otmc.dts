@@ -9,6 +9,13 @@ services:
       - /opt/dts/storage/rustfs:/data
       - ./logs:/logs
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          memory: 64M 
   dts-rc:
     image: rustfs/rc:v0.1.8
     container_name: dts-edge-rc
@@ -19,6 +26,13 @@ services:
       - ./logs:/logs
     entrypoint: /bin/sh -c "tail -f /dev/null"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 64M
+        reservations:
+          memory: 32M 
   dts-nginx-out:
     image: nginx:stable-alpine
     container_name: dts-edge-nginx-out
@@ -34,6 +48,13 @@ services:
     ports:
       - '9000:9000'
       - '9001:9001'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 64M
+        reservations:
+          memory: 32M 
   dts-coredns:
     image: coredns/coredns:1.12.4
     container_name: dts-edge-coredns
@@ -45,3 +66,10 @@ services:
     volumes:
       - ./dns/Corefile:/etc/coredns/Corefile
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 64M
+        reservations:
+          memory: 32M 

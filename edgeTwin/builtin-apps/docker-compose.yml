@@ -13,4 +13,10 @@ services:
       - /opt/otmc/spiffe/certs:/run/spire/certs
       - /opt/otmc/spiffe/sockets:/run/spire/sockets
     restart: unless-stopped
-  
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 64M
+        reservations:
+          memory: 32M 

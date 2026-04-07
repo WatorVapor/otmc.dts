@@ -103,3 +103,32 @@ openssl x509 -in /opt/otmc/secret/spire-agent/certs/x509pop-agent-leaf-701bc7b1c
 ```bash
 docker exec -it dts-cloudTwin-spire-server /opt/spire/bin/spire-server bundle show -format pem 
 ```
+
+## 给Agent发放 X509-SVID
+### 列出再服务器上登录的agent
+```bash
+docker exec dts-cloudTwin-spire-server /opt/spire/bin/spire-server agent list
+Found 1 attested agent:
+
+SPIFFE ID         : spiffe://spiffe.wator.xyz/spire/agent/x509pop/77e9a7a82046bfd11168abebf29afcfad82f30c9
+Attestation type  : x509pop
+Expiration time   : 2026-04-07 12:45:29 +0900 JST
+Serial number     : 312507295029033084434768995540504819511
+Can re-attest     : true
+```
+### 根据上面的SPIFFE ID 创建SVID
+
+```bash
+docker exec dts-cloudTwin-spire-server /opt/spire/bin/spire-server entry create \
+     -spiffeID spiffe://spiffe.wator.xyz/bucket/sync/workload \
+     -parentID spiffe://spiffe.wator.xyz/spire/agent/x509pop/77e9a7a82046bfd11168abebf29afcfad82f30c9\
+     -selector unix:uid:0
+Entry ID         : 46fa22fe-ff23-4feb-8546-419d53f34137
+SPIFFE ID        : spiffe://spiffe.wator.xyz/bucket/sync/workload
+Parent ID        : spiffe://spiffe.wator.xyz/spire/agent/x509pop/77e9a7a82046bfd11168abebf29afcfad82f30c9
+Revision         : 0
+X509-SVID TTL    : default
+JWT-SVID TTL     : default
+Selector         : unix:uid:0
+```
+

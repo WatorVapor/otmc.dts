@@ -131,4 +131,12 @@ X509-SVID TTL    : default
 JWT-SVID TTL     : default
 Selector         : unix:uid:0
 ```
-
+### 列出所有SVID
+```bash
+docker exec dts-cloudTwin-spire-server /opt/spire/bin/spire-server entry show
+```
+### 删除SVID
+```bash
+docker exec dts-cloudTwin-spire-server /opt/spire/bin/spire-server entry delete \
+     -entryID e8d608e1-93dd-498e-bfad-dd0f49294ec0
+```

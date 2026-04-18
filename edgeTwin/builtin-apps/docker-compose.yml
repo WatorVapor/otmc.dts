@@ -20,3 +20,19 @@ services:
           memory: 64M
         reservations:
           memory: 32M 
+  rclone:
+    build: ./rcloneImage
+    container_name: dts-edge-rclone
+    environment:
+      - SPIRE_SOCKET_PATH=/run/spire/sockets/agent.sock
+      - TZ=Asia/Tokyo
+    volumes:
+      - /opt/otmc/spiffe/svids:/run/spire/svids
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 64M
+        reservations:
+          memory: 32M 

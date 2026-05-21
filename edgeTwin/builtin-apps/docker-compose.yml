@@ -28,6 +28,8 @@ services:
       - TZ=Asia/Tokyo
     volumes:
       - /opt/otmc/spiffe/svids:/run/spire/svids
+      - ./syncStorage:/syncStorage
+    working_dir: /syncStorage
     restart: unless-stopped
     deploy:
       resources:

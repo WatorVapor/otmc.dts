@@ -1,6 +1,6 @@
 services:
   dts-cloud-rustfs:
-    image: rustfs/rustfs:1.0.0-alpha.80
+    image: rustfs/rustfs:1.0.0-beta.4
     container_name: dts-cloud-rustfs
     env_file:
       - .env_file

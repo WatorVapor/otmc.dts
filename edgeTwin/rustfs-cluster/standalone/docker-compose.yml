@@ -1,6 +1,6 @@
 services:
   dts-rustfs:
-    image: rustfs/rustfs:1.0.0-alpha.90
+    image: rustfs/rustfs:1.0.0-beta.4
     container_name: dts-edge-rustfs
     env_file:
       - .env_file
@@ -17,7 +17,7 @@ services:
         reservations:
           memory: 64M 
   dts-rc:
-    image: rustfs/rc:v0.1.8
+    image: rustfs/rc:v0.1.16
     container_name: dts-edge-rc
     env_file:
       - .env_file
